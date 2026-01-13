@@ -69,7 +69,7 @@ count_time_hcw_month <- rbind(count_time_hcw_cps, count_time_hcw_boost) %>%
 # HCW - cumulative count --------------------------------------------------
 
 # Create and merge blank receiving name and date tables
-base_names <- base_details %>%
+base_names <- raw_entity %>%
   select(CODE) %>%
   rename(iso = CODE)
 
@@ -397,7 +397,7 @@ count_time_old_inc_cumul <- rbind(sum_target_old_cps_inc,
 
 # Total - monthly count ----------------------------------------------------
 
-base_total <- base_details %>%
+base_total <- raw_entity %>%
   select(CODE,
          WHO_LEGAL_STATUS_TITLE,
          WHOREGIONC,
