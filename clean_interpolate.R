@@ -1,7 +1,3 @@
-library(dplyr)
-library(lubridate)
-library(rlang)
-
 interpolate_from_intro_wide_many <- function(df,
                                              vars,
                                              date_col         = "month_name",
