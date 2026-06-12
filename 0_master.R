@@ -131,7 +131,7 @@ source("8_reporting analysis.R")
 
 # Figure 1 - end-2023 coverage, violins, income group -----------------------
 
-fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>%
+fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>% 
   ggplot(aes(x = income_group, y = coverage, fill = income_group)) + 
   geom_violin(trim = TRUE, na.rm = TRUE) + 
   geom_boxplot(width = 0.1, color = "black") +
@@ -208,7 +208,7 @@ ggsave(
   filename = "fig_2_cov_cps_boost_priority_end2023.jpg",
   plot = fig_2_cov_cps_boost_priority_end2023,
   width = 13,
-  height = 8,
+  height = 7,
   dpi = 300
 )
 
@@ -274,23 +274,22 @@ ggsave(
   filename = "fig_3_admin_time_all.jpg",
   plot = fig_3_admin_time_all,
   width = 11,
-  height = 6,
+  height = 7,
   dpi = 300
 )
 
 
 # Figure 4 - weighted coverage over time, line, all -----------------------
 
-# Create figure
-fig_4_cov_time_world <- data_fig_4_cov_time_world %>%
+# Create panel a - weighted average
+fig_cov_time_global_compA <- data_fig_4_cov_time_world %>%
   ggplot(aes(x = month_name, y = coverage, color = measure)) +
   geom_line(size = 1.5) +
-  
-  # bubble point
-  geom_point(data = data_fig_4_cov_time_world_last, aes(month_name, coverage),
-             size = 3.5, show.legend = FALSE) +
-  
-  # boxed (outlined) label, repelled off the line
+  geom_point(
+    data = data_fig_4_cov_time_world_last,
+    aes(month_name, coverage),
+    size = 3.5, show.legend = FALSE
+  ) +
   geom_label_repel(
     data = data_fig_4_cov_time_world_last,
     aes(x = month_name, y = coverage, label = label, color = measure),
@@ -308,59 +307,22 @@ fig_4_cov_time_world <- data_fig_4_cov_time_world %>%
   facet_wrap(~group, ncol = 3) +
   scale_color_manual(values = palette_3) +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
-  labs(title = "COVID-19 vaccination coverage by population group, 2021–2023",
-       x = "Date",
-       y = "Vaccination coverage (% of population)",
-       color = "Legend") + 
-  theme_master + 
-  theme(legend.title = element_blank(),
-        legend.position = "bottom",
-        legend.justification = "left",
-        panel.spacing = unit(0.8, "lines"))
-
-fig_4_cov_time_world
-
-# Export
-ggsave(
-  path = path_save,
-  filename = "fig_4_cov_time_world.jpg",
-  plot = fig_4_cov_time_world,
-  width = 10,
-  height = 6,
-  dpi = 300
-)
-
-
-# Figure 5 - summary coverage over time, line, global / income ------------
-
-# Create panel a - global
-fig_5_cov_time_mediqr_compA <- data_fig_5_cov_time_mediqr_compA %>%
-  ggplot(aes(x = month_name, y = med_cov, linetype = indicator,
-             fill = indicator, color = indicator)) +
-  geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2) +
-  geom_line(linewidth = 1) +
-  scale_colour_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
-  scale_fill_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
-  scale_linetype_manual(values = c(
-    "Complete primary series" = "solid",
-    "At least one booster dose" = "22"
-  )) +
-  scale_y_continuous(labels = scales::percent_format(),
-                     limits = c(0, 0.85),
-                     expand = c(0, 0)) +
-  labs(title = "Global",
-       x = "Date",
-       y = "Vaccination coverage (% of population)") +
+  labs(
+    title = "Population-weighted coverage across reporting countries",
+    x = NULL,
+    y = "Vaccination coverage (% of pop.)",
+    color = NULL
+  ) +
   theme_master +
   theme(
     legend.position = "bottom",
-    legend.title= element_blank(),
-    plot.title = element_text(face = "italic", vjust = 3, size = 12),
+    legend.justification = "left",
+    panel.spacing = unit(0.8, "lines"),
+    plot.title = element_text(face = "italic", vjust = 2, size = 12),
     plot.margin = margin(0, 0, 0, 0, "cm")
   )
 
-# Create panel b - by income group
-fig_5_cov_time_mediqr_compB <- data_fig_5_cov_time_mediqr_compB %>%
+fig_cov_time_global_compB <- data_fig_5_cov_time_mediqr_compA_fix %>%
   ggplot(aes(x = month_name, y = med_cov, linetype = indicator,
              fill = indicator, color = indicator)) +
   geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2) +
@@ -371,47 +333,54 @@ fig_5_cov_time_mediqr_compB <- data_fig_5_cov_time_mediqr_compB %>%
     "Complete primary series" = "solid",
     "At least one booster dose" = "22"
   )) +
-  scale_y_continuous(labels = scales::percent_format(),
-                     limits = c(0, 0.85),
-                     expand = c(0, 0)) +
-  labs(title = "Income group",
-       x = "Date",
-       y = NULL) +
+  scale_y_continuous(
+    labels = scales::percent_format(),
+    limits = c(0, 1),
+    expand = c(0, 0)
+  ) +
+  facet_wrap(~group, ncol = 3) +
+  labs(
+    title = "Median (IQR) across reporting countries",
+    x = "Date",
+    y = "Vaccination coverage (% of pop.)",
+    color = NULL, fill = NULL, linetype = NULL
+  ) +
   theme_master +
   theme(
-    legend.position = "none",
+    legend.position = "bottom",
+    legend.justification = "left",
+    legend.title = element_blank(),
     plot.title = element_text(face = "italic", vjust = 3, size = 12),
-    plot.margin = margin(0, 0, 0, 0, "cm")
-  ) +
-  facet_wrap(~dimension, ncol = 2)
+    plot.margin = margin(0, 0, 0, 0, "cm"),
+    panel.spacing = unit(0.8, "lines")
+  )
 
-fig_5_cov_time_mediqr <- (fig_5_cov_time_mediqr_compA | fig_5_cov_time_mediqr_compB) +
-  plot_layout(widths = c(1, 2)) +
+# Combine (stack)
+fig_4_cov_time_global_bygroup <- (fig_cov_time_global_compA / fig_cov_time_global_compB) +
+  plot_layout(heights = c(1, 1)) +
   plot_annotation(
-    title = "Total population COVID-19 coverage (median, IQR), global and by income group, 2021–2023",
+    title = "Global COVID-19 vaccination coverage by population group, 2021-2023",
     tag_levels = "A",
     theme = theme(plot.title = element_text(face = "bold", hjust = 0, size = 14))
   ) &
   theme(
-    plot.tag = element_text(face="bold", size = 16, color="black"),
-    plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
-    panel.spacing = unit(0.4, "cm")
+    plot.tag = element_text(face = "bold", size = 16, color = "black"),
+    plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")
   )
 
-fig_5_cov_time_mediqr
+fig_4_cov_time_global_bygroup
 
 # Export
 ggsave(
   path = path_save,
-  filename = "fig_5_cov_time_mediqr.jpg",
-  plot = fig_5_cov_time_mediqr,
+  filename = "fig_4_cov_time_global_bygroup.jpg",
+  plot = fig_4_cov_time_global_bygroup,
   width = 11,
-  height = 7,
+  height = 8,
   dpi = 300
 )
 
-
-# Figure 6 - daily vaccination rate, line, 10/90 --------------------------
+# Figure 5 - daily vaccination rate, line, 10/90 --------------------------
 
 # Create panel a - global
 fig_6_dvr_summary_compA <- data_fig_5_dvr_summary_compA %>%
@@ -473,13 +442,13 @@ ggsave(
   path = path_save,
   filename = "fig_6_dvr_summary.jpg",
   plot = fig_6_dvr_summary,
-  width = 11,
+  width = 10,
   height = 7,
   dpi = 300
 )
 
 
-# Figure 7 - vaccination policy, 2024, bar, all ---------------------------
+# Figure 6 - vaccination policy, 2024, bar, all ---------------------------
 
 # Modify theme for figure
 theme_fig7 <- theme_master +
@@ -515,7 +484,7 @@ fig_7_policy_2024_all_compA <- data_fig_7_policy_2024_all_compA %>%
 
 # Create panel b - policy count (100%), by income group
 fig_7_policy_2024_all_compB <- data_fig_7_policy_2024_all_compB %>%
-  ggplot(aes(x = pct, y = a_income_group, fill = status_policy)) +
+  ggplot(aes(x = pct, y = income_group, fill = status_policy)) +
   geom_col(width = 0.75, color = "black", linewidth = 0.2,
            position = position_stack(reverse = TRUE)) +
   geom_text(aes(label = ifelse(pct >= pct_label_min, paste0(round(pct), "%"), "")),
@@ -534,7 +503,7 @@ fig_7_policy_2024_all_compB <- data_fig_7_policy_2024_all_compB %>%
 
 # Create main legend
 fig_7_policy_2024_all_compleg <- data_fig_7_policy_2024_all_compB %>%
-  ggplot(aes(x = pct, y = a_income_group, fill = status_policy)) +
+  ggplot(aes(x = pct, y = income_group, fill = status_policy)) +
   geom_col() +
   scale_fill_manual(
     values = palette_4,
@@ -589,7 +558,7 @@ ggsave(
   path = path_save,
   filename = "fig_7_policy_2024_all.jpg",
   plot = fig_7_policy_2024_all,
-  width = 12,
+  width = 11,
   height = 7,
   dpi = 300
 )
@@ -610,27 +579,44 @@ type_labels <- c(
 type_order <- c("All", "Income group", "WHO region", "COVAX participation category")
 
 # within-section order
-covax_order  <- c("AMC", "Self-financing", "No")  # adjust if desired
+covax_order <- c("AMC", "Self-financing", "No")  # adjust if desired
+
+# short labels for subcolumns
+measure_labels <- c(
+  "Complete primary series"   = "CPS",
+  "At least one booster dose" = "Booster"
+)
+
+# desired group order
+group_order <- levels_groups_short
+
+# desired output column order
+value_cols <- as.vector(
+  unlist(lapply(group_order, function(g) paste(g, c("CPS", "Booster"), sep = "___")))
+)
 
 base <- data_cov_time_all %>%
   filter(
     month_name == ref_date,
-    measure %in% c("Complete primary series", "At least one booster dose"),
-    measure != "Total doses"
+    measure %in% c("Complete primary series", "At least one booster dose")
   ) %>%
   mutate(
     type_title = recode(as.character(type), !!!type_labels),
     type_title = factor(type_title, levels = type_order),
     
     Row = case_when(
-      type == "all" ~ "Global",                         # avoid "All" duplicated
+      type == "all" ~ "Global",
       is.na(dimension) | dimension == "NA" ~ "All",
       TRUE ~ as.character(dimension)
     ),
     
     group = factor(group, levels = levels_groups_short),
     
-    # ordering key within each section
+    measure_short = case_when(
+      measure == "Complete primary series" ~ "CPS",
+      measure == "At least one booster dose" ~ "Booster"
+    ),
+    
     Row_order = case_when(
       type == "all"    ~ 1L,
       type == "income" ~ match(Row, levels_income),
@@ -640,7 +626,7 @@ base <- data_cov_time_all %>%
     ),
     Row_order = if_else(is.na(Row_order), 999L, Row_order)
   ) %>%
-  group_by(type_title, Row, Row_order, group, measure) %>%
+  group_by(type_title, Row, Row_order, group, measure_short) %>%
   summarise(
     cov = {
       pop_sum <- sum(pop, na.rm = TRUE)
@@ -648,28 +634,32 @@ base <- data_cov_time_all %>%
     },
     .groups = "drop"
   ) %>%
-  pivot_wider(names_from = measure, values_from = cov) %>%
   mutate(
-    cell = paste0(
-      if_else(is.na(`Complete primary series`), "—",
-              sprintf("%.0f%%", 100 * `Complete primary series`)),
-      " / ",
-      if_else(is.na(`At least one booster dose`), "—",
-              sprintf("%.0f%%", 100 * `At least one booster dose`))
-    )
+    value = if_else(is.na(cov), "—", sprintf("%.0f%%", 100 * cov))
   ) %>%
-  select(type_title, Row, Row_order, group, cell) %>%
-  pivot_wider(names_from = group, values_from = cell) %>%
+  ungroup() %>%
+  pivot_wider(
+    id_cols = c(type_title, Row, Row_order),
+    names_from = c(group, measure_short),
+    names_sep = "___",
+    values_from = value
+  ) %>%
   arrange(type_title, Row_order, Row)
 
-make_header_row <- function(title) {
+# add any missing columns so structure is stable
+for (nm in value_cols) {
+  if (!nm %in% names(base)) base[[nm]] <- ""
+}
+
+base <- base %>%
+  select(type_title, Row, Row_order, all_of(value_cols))
+
+make_header_row <- function(title, value_cols) {
   tibble(
     type_title = title,
     Row = as.character(title),
     Row_order = 0L,
-    `Total population` = "",
-    `Older adults` = "",
-    `Health and care workers` = "",
+    !!!setNames(as.list(rep("", length(value_cols))), value_cols),
     is_header = TRUE
   )
 }
@@ -678,13 +668,23 @@ ft_data <- base %>%
   mutate(is_header = FALSE) %>%
   group_by(type_title) %>%
   group_split(.keep = TRUE) %>%
-  lapply(function(df) bind_rows(make_header_row(unique(df$type_title)), df)) %>%
+  lapply(function(df) bind_rows(make_header_row(unique(df$type_title), value_cols), df)) %>%
   bind_rows() %>%
   arrange(type_title, Row_order, Row) %>%
   rename(Category = Row) %>%
-  select(Category, all_of(levels_groups_short), is_header)
+  select(Category, all_of(value_cols), is_header)
 
-ft <- flextable(ft_data %>% select(-is_header)) %>%
+# header mapping for flextable
+header_map <- tibble(
+  col_keys = c("Category", value_cols),
+  header1  = c("Category", rep(group_order, each = 2)),
+  header2  = c("Category", rep(c("CPS", "Booster"), times = length(group_order)))
+)
+
+ft <- flextable(ft_data %>% select(-is_header), col_keys = header_map$col_keys) %>%
+  set_header_df(mapping = header_map, key = "col_keys") %>%
+  merge_h(part = "header") %>%
+  merge_v(part = "header", j = "Category") %>%
   bold(part = "header") %>%
   bold(i = ft_data$is_header, bold = TRUE) %>%
   border(
@@ -700,7 +700,7 @@ ft <- flextable(ft_data %>% select(-is_header)) %>%
 ft
 
 # Export
-save_as_docx(ft, path = "output/Table_1_end-2023 coverage.docx")
+save_as_docx(ft, path = "output/Table_1_end-2023_coverage.docx")
 
 
 # Table 2 - daily vaccination rate, 2021-2023, income ---------------------
@@ -996,45 +996,83 @@ ggsave(
 )
 
 
-
 # Supp. Figure 3 - xxx ----------------------------------------------------
 
 
 # Supp. Figure 4 - daily vaccination rate, income / region, weighted ------
 
-fig_supp_4_dvr_time_increg <- data_fig_supp_4_dvr_time_increg %>%
-  ggplot(aes(x = adm_date, y = dvr_per, color = dimension)) +
-  geom_line(size = 1.5) +
-  geom_point(data = dvr_weighted %>% 
-               group_by(type, dimension) %>% 
-               filter(type != "COVAX participation category", 
-                      dvr_per == max(dvr_per)), 
-             aes(x = adm_date, y = dvr_per, color = dimension), 
-             size = 3, shape = 21, fill = "black", stroke = 0) +
-  scale_color_manual(values = c(color_who_seq_1, color_who_afr, color_who_amr, 
-                                color_who_emr,
-                                color_who_eur, color_who_sear, color_who_wpr,
-                                color_who_cat_base_1, color_who_cat_base_2,
-                                color_who_cat_base_3, color_who_cat_base_4)) +
-  # scale_x_date(date_labels = "%b %Y") +
-  scale_y_continuous(labels = scales::percent_format()) +
-  theme_test() + 
-  labs(title = "Daily vaccination rate in total population (weighted average), global, region and income group",
-       y = "Percentage of total population",
-       x = "Date") +
-  theme(axis.title.x = element_text(size = 11),
-        axis.text.x = element_text(size = 10),
-        axis.title.y = element_text(vjust = 4, size = 11),
-        axis.text.y = element_text(size = 10),
-        legend.title = element_blank(),
-        legend.position = "bottom",
-        legend.justification = "left",
-        plot.title = element_text(face = "bold", vjust = 3, size = 14),
-        plot.subtitle = element_text(size = 8, face = "italic", vjust = 7),
-        plot.caption = element_text(hjust = 0, size = 8, vjust = -3),
-        plot.margin = margin(0.5,0.5,0.5,0.5, "cm")) + 
-  facet_wrap(~ type, ncol = 1, as.table = FALSE) + 
-  guides(color = guide_legend(nrow = 2, ncol = 6, byrow = TRUE))
+dvr_time_increg_colors <- c("Global" = color_who_seq_1,
+                            "AFR" = color_who_afr,
+                            "AMR" = color_who_amr,
+                            "EMR" = color_who_emr,
+                            "EUR" = color_who_eur,
+                            "SEAR" = color_who_sear,
+                            "WPR" = color_who_wpr,
+                            "HIC" = color_who_cat_base_1,
+                            "UMIC" = color_who_cat_base_2,
+                            "LMIC" = color_who_cat_base_3,
+                            "LIC" = color_who_cat_base_4)
+
+plot_dvr_time_increg_panel <- function(panel_type) {
+  panel_data <- data_fig_supp_4_dvr_time_increg %>%
+    filter(type == panel_type)
+  
+  panel_points <- dvr_weighted %>%
+    filter(type == panel_type) %>%
+    group_by(type, dimension) %>%
+    filter(dvr_per == max(dvr_per)) %>%
+    ungroup()
+  
+  panel_dimensions <- levels(droplevels(panel_data$dimension))
+  
+  panel_data %>%
+    ggplot(aes(x = adm_date, y = dvr_per, color = dimension)) +
+    geom_line(size = 1.5) +
+    geom_point(data = panel_points,
+               aes(x = adm_date, y = dvr_per, color = dimension), 
+               size = 3, shape = 21, fill = "black", stroke = 0) +
+    scale_color_manual(values = dvr_time_increg_colors,
+                       breaks = panel_dimensions,
+                       limits = panel_dimensions,
+                       drop = FALSE) +
+    # scale_x_date(date_labels = "%b %Y") +
+    scale_y_continuous(labels = scales::percent_format(),
+                       limits = c(0, 0.01)) +
+    theme_test() + 
+    labs(title = panel_type,
+         y = if (panel_type == "Income group") {
+           "Percentage of total population"
+         } else {
+           NULL
+         },
+         x = if (panel_type == "All") {
+           "Date"
+         } else {
+           NULL
+         }) +
+    theme(axis.title.x = element_text(size = 11),
+          axis.text.x = element_text(size = 10),
+          axis.title.y = element_text(vjust = 4, size = 11),
+          axis.text.y = element_text(size = 10),
+          legend.title = element_blank(),
+          legend.position = c(0.98, 0.98),
+          legend.justification = c("right", "top"),
+          legend.background = element_rect(fill = alpha("white", 0.85),
+                                           color = "grey80"),
+          plot.title = element_text(face = "bold", vjust = 3, size = 11),
+          plot.subtitle = element_text(size = 8, face = "italic", vjust = 7),
+          plot.caption = element_text(hjust = 0, size = 8, vjust = -3),
+          plot.margin = margin(0.5,0.5,0.5,0.5, "cm")) + 
+    guides(color = guide_legend(nrow = 1, byrow = TRUE))
+}
+
+fig_supp_4_dvr_time_increg <- c("WHO region", "Income group", "All") %>%
+  map(plot_dvr_time_increg_panel) %>%
+  wrap_plots(ncol = 1) +
+  plot_annotation(
+    title = "Daily vaccination rate in total population (weighted average), global, region and income group",
+    theme = theme(plot.title = element_text(face = "bold", vjust = 3, size = 14))
+  )
 
 fig_supp_4_dvr_time_increg
 
@@ -1044,7 +1082,7 @@ ggsave(
   filename = "fig_supp_4_dvr_time_increg.jpg",
   plot = fig_supp_4_dvr_time_increg,
   width = 10,
-  height = 6,
+  height = 7,
   dpi = 300
 )
 
@@ -1131,7 +1169,7 @@ ggsave(
   filename = "fig_supp_6_cov_mediqr_all.jpg",
   plot = fig_supp_6_cov_mediqr_all,
   width = 10,
-  height = 6,
+  height = 7,
   dpi = 300
 )
 
@@ -1183,3 +1221,131 @@ ggsave(
 
 # End ---------------------------------------------------------------------
 
+# Create figure
+fig_4_cov_time_world <- data_fig_4_cov_time_world %>%
+  ggplot(aes(x = month_name, y = coverage, color = measure)) +
+  geom_line(size = 1.5) +
+  
+  # bubble point
+  geom_point(data = data_fig_4_cov_time_world_last, aes(month_name, coverage),
+             size = 3.5, show.legend = FALSE) +
+  
+  # boxed (outlined) label, repelled off the line
+  geom_label_repel(
+    data = data_fig_4_cov_time_world_last,
+    aes(x = month_name, y = coverage, label = label, color = measure),
+    inherit.aes = FALSE,
+    size = 3.5, label.size = 0.5,
+    label.r = unit(0.25, "lines"),
+    fill = "white",
+    box.padding = 0.5, point.padding = 0.5,
+    nudge_x = 0, nudge_y = 0,
+    segment.color = "grey60", segment.size = 0.3,
+    min.segment.length = 0,
+    max.overlaps = Inf,
+    show.legend = FALSE
+  ) +
+  facet_wrap(~group, ncol = 3) +
+  scale_color_manual(values = palette_3) +
+  scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
+  labs(title = "COVID-19 vaccination coverage by population group, 2021–2023",
+       x = "Date",
+       y = "Vaccination coverage (% of population)",
+       color = "Legend") + 
+  theme_master + 
+  theme(legend.title = element_blank(),
+        legend.position = "bottom",
+        legend.justification = "left",
+        panel.spacing = unit(0.8, "lines"))
+
+fig_4_cov_time_world
+
+# Export
+ggsave(
+  path = path_save,
+  filename = "fig_4_cov_time_world.jpg",
+  plot = fig_4_cov_time_world,
+  width = 10,
+  height = 6,
+  dpi = 300
+)
+
+
+# Figure 5 - summary coverage over time, line, global / income ------------
+
+# Create panel a - global
+fig_5_cov_time_mediqr_compA <- data_fig_5_cov_time_mediqr_compA %>%
+  ggplot(aes(x = month_name, y = med_cov, linetype = indicator,
+             fill = indicator, color = indicator)) +
+  geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2) +
+  geom_line(linewidth = 1) +
+  scale_colour_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
+  scale_fill_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
+  scale_linetype_manual(values = c(
+    "Complete primary series" = "solid",
+    "At least one booster dose" = "22"
+  )) +
+  scale_y_continuous(labels = scales::percent_format(),
+                     limits = c(0, 0.85),
+                     expand = c(0, 0)) +
+  labs(title = "Global",
+       x = "Date",
+       y = "Vaccination coverage (% of population)") +
+  theme_master +
+  theme(
+    legend.position = "bottom",
+    legend.title= element_blank(),
+    plot.title = element_text(face = "italic", vjust = 3, size = 12),
+    plot.margin = margin(0, 0, 0, 0, "cm")
+  )
+
+# Create panel b - by income group
+fig_5_cov_time_mediqr_compB <- data_fig_5_cov_time_mediqr_compB %>%
+  ggplot(aes(x = month_name, y = med_cov, linetype = indicator,
+             fill = indicator, color = indicator)) +
+  geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2) +
+  geom_line(linewidth = 1) +
+  scale_colour_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
+  scale_fill_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
+  scale_linetype_manual(values = c(
+    "Complete primary series" = "solid",
+    "At least one booster dose" = "22"
+  )) +
+  scale_y_continuous(labels = scales::percent_format(),
+                     limits = c(0, 0.85),
+                     expand = c(0, 0)) +
+  labs(title = "Income group",
+       x = "Date",
+       y = NULL) +
+  theme_master +
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "italic", vjust = 3, size = 12),
+    plot.margin = margin(0, 0, 0, 0, "cm")
+  ) +
+  facet_wrap(~dimension, ncol = 2)
+
+fig_5_cov_time_mediqr <- (fig_5_cov_time_mediqr_compA | fig_5_cov_time_mediqr_compB) +
+  plot_layout(widths = c(1, 2)) +
+  plot_annotation(
+    title = "Total population COVID-19 coverage (median, IQR), global and by income group, 2021–2023",
+    tag_levels = "A",
+    theme = theme(plot.title = element_text(face = "bold", hjust = 0, size = 14))
+  ) &
+  theme(
+    plot.tag = element_text(face="bold", size = 16, color="black"),
+    plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
+    panel.spacing = unit(0.4, "cm")
+  )
+
+fig_5_cov_time_mediqr
+
+# Export
+ggsave(
+  path = path_save,
+  filename = "fig_5_cov_time_mediqr.jpg",
+  plot = fig_5_cov_time_mediqr,
+  width = 11,
+  height = 7,
+  dpi = 300
+)

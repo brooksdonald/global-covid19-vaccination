@@ -49,31 +49,37 @@ cov_acute_summary_all <- data_cov_time_country %>%
     med_cov_tot_cps = median(cov_tot_cps, na.rm = TRUE), 
     perc_25_tot_cps = quantile(cov_tot_cps, 0.25, na.rm = TRUE),
     perc_75_tot_cps = quantile(cov_tot_cps, 0.75, na.rm = TRUE),
+    n_tot_cps = sum(!is.na(cov_tot_cps)),
     
     avg_cov_tot_boost = mean(cov_tot_boost, na.rm = TRUE),
     med_cov_tot_boost = median(cov_tot_boost, na.rm = TRUE), 
     perc_25_tot_boost = quantile(cov_tot_boost, 0.25, na.rm = TRUE),
     perc_75_tot_boost = quantile(cov_tot_boost, 0.75, na.rm = TRUE),
+    n_tot_boost = sum(!is.na(cov_tot_boost)),
     
     avg_cov_old_cps = mean(cov_old_cps, na.rm = TRUE),
     med_cov_old_cps = median(cov_old_cps, na.rm = TRUE), 
     perc_25_old_cps = quantile(cov_old_cps, 0.25, na.rm = TRUE),
     perc_75_old_cps = quantile(cov_old_cps, 0.75, na.rm = TRUE),
+    n_old_cps = sum(!is.na(cov_old_cps)),
     
     avg_cov_old_boost = mean(cov_old_boost, na.rm = TRUE),
     med_cov_old_boost = median(cov_old_boost, na.rm = TRUE), 
     perc_25_old_boost = quantile(cov_old_boost, 0.25, na.rm = TRUE),
     perc_75_old_boost = quantile(cov_old_boost, 0.75, na.rm = TRUE),
+    n_old_boost = sum(!is.na(cov_old_boost)),
     
     avg_cov_hcw_cps = mean(cov_hcw_cps, na.rm = TRUE),
     med_cov_hcw_cps = median(cov_hcw_cps, na.rm = TRUE), 
     perc_25_hcw_cps = quantile(cov_hcw_cps, 0.25, na.rm = TRUE),
     perc_75_hcw_cps = quantile(cov_hcw_cps, 0.75, na.rm = TRUE),
+    n_hcw_cps = sum(!is.na(cov_hcw_cps)),
     
     avg_cov_hcw_boost = mean(cov_hcw_boost, na.rm = TRUE),
     med_cov_hcw_boost = median(cov_hcw_boost, na.rm = TRUE), 
     perc_25_hcw_boost = quantile(cov_hcw_boost, 0.25, na.rm = TRUE),
     perc_75_hcw_boost = quantile(cov_hcw_boost, 0.75, na.rm = TRUE),
+    n_hcw_boost = sum(!is.na(cov_hcw_boost))
   ) %>%
   mutate(
     type = "global",
@@ -101,31 +107,37 @@ cov_acute_summary_income <- data_cov_time_country %>%
     med_cov_tot_cps = median(cov_tot_cps, na.rm = TRUE), 
     perc_25_tot_cps = quantile(cov_tot_cps, 0.25, na.rm = TRUE),
     perc_75_tot_cps = quantile(cov_tot_cps, 0.75, na.rm = TRUE),
+    n_tot_cps = sum(!is.na(cov_tot_cps)),
     
     avg_cov_tot_boost = mean(cov_tot_boost, na.rm = TRUE),
     med_cov_tot_boost = median(cov_tot_boost, na.rm = TRUE), 
     perc_25_tot_boost = quantile(cov_tot_boost, 0.25, na.rm = TRUE),
     perc_75_tot_boost = quantile(cov_tot_boost, 0.75, na.rm = TRUE),
+    n_tot_boost = sum(!is.na(cov_tot_boost)),
     
     avg_cov_old_cps = mean(cov_old_cps, na.rm = TRUE),
     med_cov_old_cps = median(cov_old_cps, na.rm = TRUE), 
     perc_25_old_cps = quantile(cov_old_cps, 0.25, na.rm = TRUE),
     perc_75_old_cps = quantile(cov_old_cps, 0.75, na.rm = TRUE),
+    n_old_cps = sum(!is.na(cov_old_cps)),
     
     avg_cov_old_boost = mean(cov_old_boost, na.rm = TRUE),
     med_cov_old_boost = median(cov_old_boost, na.rm = TRUE), 
     perc_25_old_boost = quantile(cov_old_boost, 0.25, na.rm = TRUE),
     perc_75_old_boost = quantile(cov_old_boost, 0.75, na.rm = TRUE),
+    n_old_boost = sum(!is.na(cov_old_boost)),
     
     avg_cov_hcw_cps = mean(cov_hcw_cps, na.rm = TRUE),
     med_cov_hcw_cps = median(cov_hcw_cps, na.rm = TRUE), 
     perc_25_hcw_cps = quantile(cov_hcw_cps, 0.25, na.rm = TRUE),
     perc_75_hcw_cps = quantile(cov_hcw_cps, 0.75, na.rm = TRUE),
+    n_hcw_cps = sum(!is.na(cov_hcw_cps)),
     
     avg_cov_hcw_boost = mean(cov_hcw_boost, na.rm = TRUE),
     med_cov_hcw_boost = median(cov_hcw_boost, na.rm = TRUE), 
     perc_25_hcw_boost = quantile(cov_hcw_boost, 0.25, na.rm = TRUE),
     perc_75_hcw_boost = quantile(cov_hcw_boost, 0.75, na.rm = TRUE),
+    n_hcw_boost = sum(!is.na(cov_hcw_boost))
   ) %>%
   mutate(
     type = "income"
@@ -151,31 +163,37 @@ cov_acute_summary_region <- data_cov_time_country %>%
     med_cov_tot_cps = median(cov_tot_cps, na.rm = TRUE), 
     perc_25_tot_cps = quantile(cov_tot_cps, 0.25, na.rm = TRUE),
     perc_75_tot_cps = quantile(cov_tot_cps, 0.75, na.rm = TRUE),
+    n_tot_cps = sum(!is.na(cov_tot_cps)),
     
     avg_cov_tot_boost = mean(cov_tot_boost, na.rm = TRUE),
     med_cov_tot_boost = median(cov_tot_boost, na.rm = TRUE), 
     perc_25_tot_boost = quantile(cov_tot_boost, 0.25, na.rm = TRUE),
     perc_75_tot_boost = quantile(cov_tot_boost, 0.75, na.rm = TRUE),
+    n_tot_boost = sum(!is.na(cov_tot_boost)),
     
     avg_cov_old_cps = mean(cov_old_cps, na.rm = TRUE),
     med_cov_old_cps = median(cov_old_cps, na.rm = TRUE), 
     perc_25_old_cps = quantile(cov_old_cps, 0.25, na.rm = TRUE),
     perc_75_old_cps = quantile(cov_old_cps, 0.75, na.rm = TRUE),
+    n_old_cps = sum(!is.na(cov_old_cps)),
     
     avg_cov_old_boost = mean(cov_old_boost, na.rm = TRUE),
     med_cov_old_boost = median(cov_old_boost, na.rm = TRUE), 
     perc_25_old_boost = quantile(cov_old_boost, 0.25, na.rm = TRUE),
     perc_75_old_boost = quantile(cov_old_boost, 0.75, na.rm = TRUE),
+    n_old_boost = sum(!is.na(cov_old_boost)),
     
     avg_cov_hcw_cps = mean(cov_hcw_cps, na.rm = TRUE),
     med_cov_hcw_cps = median(cov_hcw_cps, na.rm = TRUE), 
     perc_25_hcw_cps = quantile(cov_hcw_cps, 0.25, na.rm = TRUE),
     perc_75_hcw_cps = quantile(cov_hcw_cps, 0.75, na.rm = TRUE),
+    n_hcw_cps = sum(!is.na(cov_hcw_cps)),
     
     avg_cov_hcw_boost = mean(cov_hcw_boost, na.rm = TRUE),
     med_cov_hcw_boost = median(cov_hcw_boost, na.rm = TRUE), 
     perc_25_hcw_boost = quantile(cov_hcw_boost, 0.25, na.rm = TRUE),
     perc_75_hcw_boost = quantile(cov_hcw_boost, 0.75, na.rm = TRUE),
+    n_hcw_boost = sum(!is.na(cov_hcw_boost))
   ) %>%
   mutate(
     type = "region"
@@ -201,31 +219,37 @@ cov_acute_summary_covax <- data_cov_time_country %>%
     med_cov_tot_cps = median(cov_tot_cps, na.rm = TRUE), 
     perc_25_tot_cps = quantile(cov_tot_cps, 0.25, na.rm = TRUE),
     perc_75_tot_cps = quantile(cov_tot_cps, 0.75, na.rm = TRUE),
+    n_tot_cps = sum(!is.na(cov_tot_cps)),
     
     avg_cov_tot_boost = mean(cov_tot_boost, na.rm = TRUE),
     med_cov_tot_boost = median(cov_tot_boost, na.rm = TRUE), 
     perc_25_tot_boost = quantile(cov_tot_boost, 0.25, na.rm = TRUE),
     perc_75_tot_boost = quantile(cov_tot_boost, 0.75, na.rm = TRUE),
+    n_tot_boost = sum(!is.na(cov_tot_boost)),
     
     avg_cov_old_cps = mean(cov_old_cps, na.rm = TRUE),
     med_cov_old_cps = median(cov_old_cps, na.rm = TRUE), 
     perc_25_old_cps = quantile(cov_old_cps, 0.25, na.rm = TRUE),
     perc_75_old_cps = quantile(cov_old_cps, 0.75, na.rm = TRUE),
+    n_old_cps = sum(!is.na(cov_old_cps)),
     
     avg_cov_old_boost = mean(cov_old_boost, na.rm = TRUE),
     med_cov_old_boost = median(cov_old_boost, na.rm = TRUE), 
     perc_25_old_boost = quantile(cov_old_boost, 0.25, na.rm = TRUE),
     perc_75_old_boost = quantile(cov_old_boost, 0.75, na.rm = TRUE),
+    n_old_boost = sum(!is.na(cov_old_boost)),
     
     avg_cov_hcw_cps = mean(cov_hcw_cps, na.rm = TRUE),
     med_cov_hcw_cps = median(cov_hcw_cps, na.rm = TRUE), 
     perc_25_hcw_cps = quantile(cov_hcw_cps, 0.25, na.rm = TRUE),
     perc_75_hcw_cps = quantile(cov_hcw_cps, 0.75, na.rm = TRUE),
+    n_hcw_cps = sum(!is.na(cov_hcw_cps)),
     
     avg_cov_hcw_boost = mean(cov_hcw_boost, na.rm = TRUE),
     med_cov_hcw_boost = median(cov_hcw_boost, na.rm = TRUE), 
     perc_25_hcw_boost = quantile(cov_hcw_boost, 0.25, na.rm = TRUE),
     perc_75_hcw_boost = quantile(cov_hcw_boost, 0.75, na.rm = TRUE),
+    n_hcw_boost = sum(!is.na(cov_hcw_boost)),
   ) %>%
   mutate(
     type = "covax"
@@ -238,7 +262,7 @@ cov_acute_summary <- bind_rows(cov_acute_summary_all,
                                cov_acute_summary_income,
                                cov_acute_summary_region,
                                cov_acute_summary_covax) %>%
-  pivot_longer(cols = matches("^(avg_cov|med_cov|perc_25|perc_75)_(tot|hcw|old)_(cps|boost)$"),
+  pivot_longer(cols = matches("^(avg_cov|med_cov|perc_25|perc_75|n)_(tot|hcw|old)_(cps|boost)$"),
                names_to = c(".value", "group", "indicator"),
                names_pattern = "^(.*)_(tot|hcw|old)_(cps|boost)$")
 
@@ -814,15 +838,22 @@ data_fig_4_cov_time_world <- data_cov_time_world_full %>%
 
 
 # Figure 5
-data_fig_5_cov_time_mediqr_compA <- cov_acute_summary %>%
-  filter(type == "global", 
-         group == "tot",
+
+min_n <- 10
+
+data_fig_5_cov_time_mediqr_compA_fix <- cov_acute_summary %>%
+  filter(type == "global",
          month_name < as.Date("2024-01-01")) %>%
   mutate(
+    med_cov = ifelse(n >= min_n, med_cov, NA_real_),
+    perc_25 = ifelse(n >= min_n, perc_25, NA_real_),
+    perc_75 = ifelse(n >= min_n, perc_75, NA_real_),
     dimension = factor(dimension, levels = levels_income),
     indicator = factor(indicator, levels = c("cps","boost"),
                        labels = c("Complete primary series", 
-                                  "At least one booster dose"))
+                                  "At least one booster dose")),
+    group = factor(group, levels = c("tot","old","hcw"),
+                   labels = levels_groups_short)
   )
 
 data_fig_5_cov_time_mediqr_compB <- cov_acute_summary %>%

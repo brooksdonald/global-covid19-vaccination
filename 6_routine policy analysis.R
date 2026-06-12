@@ -3,15 +3,15 @@
 
 # Create entry orders
 levels_policy_a <- c(
-  "Periodic revaccination & primary vaccination recommended",
+  "Primary vaccination & periodic revaccination recommended",
   "Primary vaccination only recommended",
-  "(Re-) vaccination not recommended"
+  "Vaccination not recommended"
 )
 
 levels_policy_b <- c(
-  "Periodic revaccination & primary vaccination recommended",
+  "Primary vaccination & periodic revaccination recommended",
   "Primary vaccination only recommended",
-  "(Re-) vaccination not recommended",
+  "Vaccination not recommended",
   "No response provided"
 )
 
@@ -30,12 +30,22 @@ levels_group <- c(
 data_routine_policy_2024 <- raw_policy_wide %>%
   filter(REPORTING_PERIOD == 12,
          a_status_who == "Member State") %>%
+  select(iso,
+         group,
+         policy_revacc_interval,
+         status_policy) %>%
   mutate(policy_revacc_interval = case_when(
     policy_revacc_interval == "12_MONTHS" ~ "12 months",
     policy_revacc_interval == "6_MONTHS" ~ "6 months",
     policy_revacc_interval == "OTHER" ~ "Other",
     TRUE ~ policy_revacc_interval
-  ))
+  ),
+  status_policy = case_when(
+    status_policy == "Periodic revaccination & primary vaccination recommended" ~ "Primary vaccination & periodic revaccination recommended",
+    status_policy == "(Re-) vaccination not recommended" ~ "Vaccination not recommended",
+    TRUE ~ status_policy
+  )) %>%
+  left_join(., entity_pop %>% select(iso, region_who, income_group), by = "iso")
 
 
 # Prepare dataframes for visualization ------------------------------------
@@ -61,15 +71,16 @@ data_fig_7_policy_2024_all_compA_tot <- data_fig_7_policy_2024_all_compA %>%
 
 # Data for panel b - policy count (100%), by income group (includes non-responders)
 data_fig_7_policy_2024_all_compB <- data_routine_policy_2024 %>%
-  filter(!is.na(a_income_group),
+  filter(!is.na(income_group),
+         income_group != "",
          group != "Other groups") %>%
-  group_by(group, a_income_group, status_policy) %>%
+  group_by(group, income_group, status_policy) %>%
   summarise(n = n_distinct(iso), .groups = "drop") %>%
-  group_by(group, a_income_group) %>%
+  group_by(group, income_group) %>%
   mutate(pct = 100 * n / sum(n),
          status_policy = factor(status_policy, levels = levels_policy_b),
          group = factor(group, levels_group),
-         a_income_group = factor(a_income_group, levels = levels_income)) %>%
+         income_group = factor(income_group, levels = levels_income)) %>%
   ungroup()
 
 
