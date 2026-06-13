@@ -21,6 +21,8 @@ WHO region, COVAX participation category, and policy category.
 - `6_routine policy analysis.R`: 2024 vaccination policy analysis.
 - `7_routine coverage analysis.R`: 2024 routine coverage analysis.
 - `8_reporting analysis.R`: Reporting completeness analysis.
+- `9_figures.R`: Figure generation and export.
+- `10_tables.R`: Table generation and export.
 - `clean_monotone.R`: Helper for monotonicity cleaning.
 - `clean_interpolate.R`: Helper for interpolation from vaccine introduction.
 - `a_design specifications.R`: Figure colors and design settings.
@@ -95,6 +97,9 @@ source("covid_vaccination/0_master.R")
 The script reads inputs from `input/` and writes figures and tables to
 `output/`. The `output/` directory is created automatically if it does not
 already exist.
+
+To run the analysis without exporting figures or tables, set
+`export_outputs <- FALSE` near the top of `0_master.R`.
 
 To force a live WHO API refresh instead of using the cached JSON files:
 
