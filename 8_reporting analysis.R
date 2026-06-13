@@ -1,11 +1,25 @@
 
+# Select one target-group row per country-month, matching upstream coverage logic.
+# Reporting status is then derived from the selected coverage row.
+select_target_reporting_row <- function(df, target_group) {
+  df %>%
+    filter(
+      TARGET_GROUP == target_group,
+      WHO_LEGAL_STATUS_TITLE == "Member State",
+      !is.na(N_VACC_LAST_DOSE),
+      N_VACC_LAST_DOSE != 0
+    ) %>%
+    mutate(DATE = as.Date(DATE)) %>%
+    group_by(ISO_3_CODE, DATE) %>%
+    slice_max(order_by = N_VACC_LAST_DOSE, n = 1, with_ties = FALSE) %>%
+    ungroup()
+}
+
+
 # HCW - monthly count -----------------------------------------------------
 
 # Filter for healthcare workers & legal status
-target_hcw <- base_target %>%
-  
-  
-  filter(TARGET_GROUP == "HW" & WHO_LEGAL_STATUS_TITLE == "Member State") %>%
+target_hcw <- select_target_reporting_row(base_target, "HW") %>%
   mutate(hw_cps_repstat = if_else(
            is.na(N_VACC_LAST_DOSE) == FALSE & N_VACC_LAST_DOSE != 0,
            "reporting", NA_character_),
@@ -15,10 +29,7 @@ target_hcw <- base_target %>%
 
 # Filter for cps reporting countries
 target_hcw_cps <- target_hcw %>%
-  filter(hw_cps_repstat == "reporting") %>%
-  group_by(ISO_3_CODE, DATE) %>%
-  top_n(1, N_VACC_LAST_DOSE) %>%
-  ungroup()
+  filter(hw_cps_repstat == "reporting")
 
 ## Summarize by month
 count_time_hcw_cps <- target_hcw_cps %>%
@@ -37,10 +48,7 @@ count_country_hcw_cps <- target_hcw_cps %>%
 
 # Filter for booster reporting countries
 target_hcw_boost <- target_hcw %>%
-  filter(hw_boost_repstat == "reporting") %>%
-  group_by(ISO_3_CODE, DATE) %>%
-  top_n(1, N_VACC_LAST_DOSE) %>%
-  ungroup()
+  filter(hw_boost_repstat == "reporting")
 
 ## Summarize by month
 count_time_hcw_boost <- target_hcw_boost %>%
@@ -160,7 +168,7 @@ sum_target_hcw_cps_inc <- mod_target_hcw %>%
            WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
            WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
            WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           NA ~ TRUE
+           TRUE ~ NA_real_
          ),
          count_per = count / count_total) %>%
   ungroup()
@@ -178,7 +186,7 @@ sum_target_hcw_boost_inc <- mod_target_hcw %>%
            WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
            WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
            WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           NA ~ TRUE
+           TRUE ~ NA_real_
          ),
          count_per = count / count_total) %>%
   ungroup()
@@ -208,8 +216,7 @@ cons_hcw_cps <- target_hcw %>%
 # Older adults - monthly count -------------------------------------------
 
 # Filter target for older adults & legal status
-target_old <- base_target %>%
-  filter(TARGET_GROUP == "OLDER_60" & WHO_LEGAL_STATUS_TITLE == "Member State") %>%
+target_old <- select_target_reporting_row(base_target, "OLDER_60") %>%
   mutate(old_cps_repstat = if_else(
            is.na(N_VACC_LAST_DOSE) == FALSE & N_VACC_LAST_DOSE != 0,
            "reporting", NA_character_),
@@ -219,10 +226,7 @@ target_old <- base_target %>%
 
 # Filter for cps reporting countries
 target_old_cps <- target_old %>%
-  filter(old_cps_repstat == "reporting") %>%
-  group_by(ISO_3_CODE, DATE) %>%
-  top_n(1, N_VACC_LAST_DOSE) %>%
-  ungroup()
+  filter(old_cps_repstat == "reporting")
 
 ## Summarize by month
 count_time_old_cps <- target_old_cps %>%
@@ -241,10 +245,7 @@ count_country_old_cps <- target_old_cps %>%
 
 # Filter for booster reporting countries
 target_old_boost <- target_old %>%
-  filter(old_boost_repstat == "reporting") %>%
-  group_by(ISO_3_CODE, DATE) %>%
-  top_n(1, N_VACC_LAST_DOSE) %>%
-  ungroup()
+  filter(old_boost_repstat == "reporting")
 
 ## Summarize by month
 count_time_old_boost <- target_old_boost %>%
@@ -366,7 +367,7 @@ sum_target_old_cps_inc <- mod_target_old %>%
            WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
            WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
            WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           NA ~ TRUE
+           TRUE ~ NA_real_
          ),
          count_per = count / count_total) %>%
   ungroup()
@@ -384,7 +385,7 @@ sum_target_old_boost_inc <- mod_target_old %>%
            WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
            WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
            WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           NA ~ TRUE
+           TRUE ~ NA_real_
          ),
          count_per = count / count_total) %>%
   ungroup()
@@ -536,7 +537,7 @@ sum_total_cps_inc <- mod_total %>%
            WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
            WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
            WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           NA ~ TRUE
+           TRUE ~ NA_real_
          ),
          count_per = count / count_total) %>%
   ungroup()
@@ -553,7 +554,7 @@ sum_total_boost_inc <- mod_total %>%
            WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
            WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
            WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           NA ~ TRUE
+           TRUE ~ NA_real_
          ),
          count_per = count / count_total) %>%
   ungroup()

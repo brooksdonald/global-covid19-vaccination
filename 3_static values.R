@@ -1,3 +1,6 @@
+# Static denominators used across figures and tables.
+# "All" denominators include all WHO Member States in the grouping.
+# "Reporting" denominators include countries reporting the relevant dose measure.
 
 # Total - global; all - count / population --------------------------------------
 

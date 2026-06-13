@@ -16,6 +16,8 @@ data_admin_daily <- raw_data_acute_time_daily %>%
 
 # Calculate simple average dvr per country grouping -----------------------
 
+# Simple averages summarize country-level DVR percentages with equal country weight
+
 # All
 dvr_simple_all <- data_admin_daily %>%
   filter(status_who == "Member State",
@@ -70,6 +72,8 @@ dvr_simple <- rbind(dvr_simple_all,
 
 
 # Calculate weighted average of dvr per country grouping ------------------
+
+# Weighted figures aggregate doses first, then divide by reporting population
 
 dvr_weighted_all <- data_admin_daily %>%
   filter(status_who == "Member State",
@@ -128,7 +132,7 @@ dvr_weighted <- rbind(dvr_weighted_all,
     dimension == "AMC" ~ pop_rep_tot_2021_cps_amc,
     dimension == "Self-financing" ~ `pop_rep_tot_2021_cps_self-financing`,
     dimension == "Non-COVAX" ~ `pop_rep_tot_2021_cps_non-covax`,
-    NA ~ TRUE
+    TRUE ~ NA_real_
   ),
   dvr_per = dvr / pop)
 

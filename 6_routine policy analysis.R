@@ -1,6 +1,8 @@
 
 # Make entries friendly for visualization ---------------------------------
 
+# Routine policy figures use the December 2024 reporting period
+
 # Create entry orders
 levels_policy_a <- c(
   "Primary vaccination & periodic revaccination recommended",

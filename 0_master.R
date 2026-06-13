@@ -8,23 +8,87 @@ rm(list = ls())
 gc()
 options(scipen = 999)
 
-# Set working directory
-setwd("/Users/brooksdonald/Documents/GitHub/covid_vaccination/")
-
 # Load packages
 
 lib <- c("tidyverse", "readxl", "writexl", "lubridate", "countrycode",
          "data.table", "httr", "scales", "jsonlite", "ggpattern", "ggrepel", 
          "scales", "treemap", "ggtext", "ggforce", "tibble", "kableExtra", 
          "knitr", "ordering", "shadowtext", "forcats", "flextable", "officer", 
-         "rlang", "cowplot","patchwork" )
+         "rlang", "cowplot", "patchwork" )
 
 lapply(lib, library, character.only = TRUE)
 
 
 # Process & design variables ----------------------------------------------
 
-path_save <- "/Users/brooksdonald/Documents/GitHub/covid_vaccination/output/"
+# Locate the repository so the script can be run from RStudio or terminal
+
+get_project_path <- function() {
+  script_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+  if (length(script_arg) > 0) {
+    return(dirname(normalizePath(sub("^--file=", "", script_arg[[1]]))))
+  }
+
+  source_files <- vapply(
+    sys.frames(),
+    function(frame) {
+      if (!is.null(frame$ofile)) frame$ofile else NA_character_
+    },
+    character(1)
+  )
+  source_files <- source_files[!is.na(source_files)]
+  if (length(source_files) > 0) {
+    return(dirname(normalizePath(tail(source_files, 1))))
+  }
+
+  if (file.exists("0_master.R")) {
+    return(normalizePath(getwd()))
+  }
+
+  stop("Cannot locate the project directory. Run source('0_master.R') from the covid_vaccination folder, or run Rscript with the path to 0_master.R.")
+}
+
+path_project <- get_project_path()
+path_input <- file.path(path_project, "input")
+path_save <- file.path(path_project, "output")
+
+if (!dir.exists(path_save)) {
+  dir.create(path_save, recursive = TRUE)
+}
+
+# Read dated WHO API snapshots by default. Set COVID_VAX_USE_LIVE_API=true
+# only when refreshing the raw API inputs for a new analysis snapshot.
+read_who_api_json <- function(url, cache_file) {
+  use_live_api <- identical(tolower(Sys.getenv("COVID_VAX_USE_LIVE_API")), "true")
+
+  if (file.exists(cache_file) && !use_live_api) {
+    message("Reading cached WHO API data: ", cache_file)
+    return(fromJSON(cache_file, flatten = TRUE))
+  }
+
+  if (!use_live_api) {
+    stop(
+      "Cached WHO API file not found: ", cache_file, "\n",
+      "Use the committed cache file, or set COVID_VAX_USE_LIVE_API=true ",
+      "to fetch a live copy and overwrite the cache.",
+      call. = FALSE
+    )
+  }
+
+  message("Fetching live WHO API data: ", url)
+  response <- GET(
+    url,
+    add_headers(`Cache-Control` = "no-cache"),
+    config = config(fresh_connect = TRUE)
+  )
+  stop_for_status(response)
+
+  response_text <- content(response, "text", encoding = "UTF-8")
+  dir.create(dirname(cache_file), recursive = TRUE, showWarnings = FALSE)
+  writeLines(response_text, cache_file, useBytes = TRUE)
+
+  fromJSON(response_text, flatten = TRUE)
+}
 
 # Theme-related settings
 theme_master <- theme_test() +
@@ -52,7 +116,7 @@ levels_indicator <- c("At least one dose", "Complete primary series",
                       "At least one booster dose")
 
 # Color-related settings
-source("a_design specifications.R")
+source(file.path(path_project, "a_design specifications.R"))
 
 palette_3 <- c(color_who_cat_base_1, color_who_cat_base_2,
                    color_who_cat_base_3)
@@ -72,61 +136,63 @@ palette_region <- c(color_who_afr, color_who_amr, color_who_emr, color_who_eur,
 
 # Load entity & population details
 raw_entity_details <- data.frame(
-  read.csv("input/data_export_WIISE_REF_COUNTRIES.csv"))
+  read.csv(file.path(path_input, "data_export_WIISE_REF_COUNTRIES.csv")))
 
 raw_adhoc <- data.frame(
-  read_excel("input/base_adhoc.xlsx", 
+  read_excel(file.path(path_input, "base_adhoc.xlsx"), 
              sheet = "data"))
 
 raw_population <- data.frame(
-  read.csv("input/data_export_WIISE_MT_REF_POPULATIONS.csv"))
+  read.csv(file.path(path_input, "data_export_WIISE_MT_REF_POPULATIONS.csv")))
 
 # Load 2021-2023 uptake data
 raw_data_acute_time <- data.frame(
-  read_excel("input/output_master_test.xlsx",
+  read_excel(file.path(path_input, "output_master_test.xlsx"),
              sheet = "1_stock")) 
 
 raw_data_acute_time_daily <- data.frame(
-  read_excel("input/output_master_test.xlsx",
+  read_excel(file.path(path_input, "output_master_test.xlsx"),
              sheet = "1_adm_all_long"))
 
 # Load 2024 policy data
 raw_policy_wide <- data.frame(
-  read_excel("input/output_new.xlsx",
+  read_excel(file.path(path_input, "output_new.xlsx"),
              sheet = "policy_country_wide"))
 
 # Load 2024 uptake data
 raw_data_post_final <- data.frame(
-  read_excel("input/output_new.xlsx",
+  read_excel(file.path(path_input, "output_new.xlsx"),
              sheet = "uptake_grouping_wide_red"))
 
 # Load uncleaned risk group uptake data
-raw_target <- GET('https://xmart-api-public.who.int/WIISE/MT_COV_UPTAKE_TARGETGROUP_LONG',
-                  add_headers(`Cache-Control` = "no-cache"),
-                  config = config(fresh_connect = TRUE))
-raw_target_text <- content(raw_target, "text")
-raw_target_json <- fromJSON(raw_target_text, flatten = TRUE)
+raw_target_json <- read_who_api_json(
+  url = "https://xmart-api-public.who.int/WIISE/MT_COV_UPTAKE_TARGETGROUP_LONG",
+  cache_file = file.path(path_input,
+                         "2026-06-12_MT_COV_UPTAKE_TARGETGROUP_LONG.json")
+)
 base_target <- as.data.frame(raw_target_json)
 names(base_target) <- substring(names(base_target), 7)
 
 # Load uncleaned total pop. uptake data
-raw_weekly <- GET('https://xmart-api-public.who.int/WIISE/COV_UPTAKE_WEEKLY')
-raw_weekly_text <- content(raw_weekly, "text")
-raw_weekly_json <- fromJSON(raw_weekly_text, flatten = TRUE)
+raw_weekly_json <- read_who_api_json(
+  url = "https://xmart-api-public.who.int/WIISE/COV_UPTAKE_WEEKLY",
+  cache_file = file.path(path_input,
+                         "2026-06-12_COV_UPTAKE_WEEKLY.json")
+)
 base_total <- as.data.frame(raw_weekly_json)
 names(base_total) <- substring(names(base_total), 7)
 
 
 # Load analyses -----------------------------------------------------------
 
-source("1_entity_pop.R")
-source("2_data cleaning.R")
-source("3_static values.R")
-source("4_acute coverage analysis.R")
-source("5_acute daily vaccination rate analysis.R")
-source("6_routine policy analysis.R")
-source("7_routine coverage analysis.R")
-source("8_reporting analysis.R")
+source(file.path(path_project, "1_entity_pop.R"))
+source(file.path(path_project, "2_data cleaning.R"))
+source(file.path(path_project, "3_static values.R"))
+source(file.path(path_project, "4_acute coverage analysis.R"))
+source(file.path(path_project, "5_acute daily vaccination rate analysis.R"))
+source(file.path(path_project, "6_routine policy analysis.R"))
+source(file.path(path_project, "7_routine coverage analysis.R"))
+source(file.path(path_project, "8_reporting analysis.R"))
 
 
 # Figure 1 - end-2023 coverage, violins, income group -----------------------
@@ -700,7 +766,7 @@ ft <- flextable(ft_data %>% select(-is_header), col_keys = header_map$col_keys) 
 ft
 
 # Export
-save_as_docx(ft, path = "output/Table_1_end-2023_coverage.docx")
+save_as_docx(ft, path = file.path(path_save, "Table_1_end-2023_coverage.docx"))
 
 
 # Table 2 - daily vaccination rate, 2021-2023, income ---------------------
@@ -759,7 +825,7 @@ ft <- flextable(ft_data %>% select(-is_header)) %>%
 ft
 
 # Export
-save_as_docx(ft, path = "output/Table_2_dvr_max.docx")
+save_as_docx(ft, path = file.path(path_save, "Table_2_dvr_max.docx"))
 
 
 # Table 3 - uptake, 2024, by groups ---------------------------------------
@@ -891,7 +957,8 @@ tab_3_coverage_2024 <- tab_3_coverage_2024 %>%
 tab_3_coverage_2024
 
 # Export
-save_as_docx(tab_3_coverage_2024, path = "output/Table_3_2024 coverage.docx")
+save_as_docx(tab_3_coverage_2024,
+             path = file.path(path_save, "Table_3_2024 coverage.docx"))
 
 
 
@@ -1274,7 +1341,8 @@ ggsave(
 # Figure 5 - summary coverage over time, line, global / income ------------
 
 # Create panel a - global
-fig_5_cov_time_mediqr_compA <- data_fig_5_cov_time_mediqr_compA %>%
+fig_5_cov_time_mediqr_compA <- data_fig_5_cov_time_mediqr_compA_fix %>%
+  filter(group == "Total population") %>%
   ggplot(aes(x = month_name, y = med_cov, linetype = indicator,
              fill = indicator, color = indicator)) +
   geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2) +

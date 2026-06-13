@@ -1,6 +1,7 @@
 
 # Calculate coverage time series from administrative data, country --------
 
+# Coverage uses cleaned cumulative administration data and caps values at 100%
 data_cov_time_country <- data_admin_time_interp %>%
   
   # Calculate coverage in total population
@@ -31,6 +32,8 @@ data_cov_time_country <- data_admin_time_interp %>%
 
 
 # Calculate 2021-2023 coverage summary figures ----------------------------
+
+# Country-level summaries are calculated across reporting countries by month
 
 # Total - global
 cov_acute_summary_all <- data_cov_time_country %>%

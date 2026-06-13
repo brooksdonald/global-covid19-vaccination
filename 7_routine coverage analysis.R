@@ -1,13 +1,14 @@
+# Prepare 2024 routine uptake table inputs for older adults and HCWs
 
 data_tab_3_coverage_2024 <- raw_data_post_final %>%
-select(grouping,
-       type,
-       count_rep_older,
-       count_rep_hcw,
-       prop_pop_old,
-       prop_pop_hcw,
-       cov_older,
-       cov_hcw) %>%
+  select(grouping,
+         type,
+         count_rep_older,
+         count_rep_hcw,
+         prop_pop_old,
+         prop_pop_hcw,
+         cov_older,
+         cov_hcw) %>%
   gather(key = indicator,
          value = value,
          -grouping,

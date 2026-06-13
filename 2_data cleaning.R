@@ -39,8 +39,8 @@ data_admin_time <- raw_data_acute_time %>%
 
 # Clean timeseries data ---------------------------------------------------
 
-# Identify outliers and interpolate
-source("clean_monotone.R")
+# Identify downward breaks in cumulative time series and interpolate gaps
+source(file.path(path_project, "clean_monotone.R"))
 
 data_admin_time_mt <- clean_coverage_monotone_df(
   data_admin_time,
@@ -56,13 +56,13 @@ data_admin_time_mt <- clean_coverage_monotone_df(
                     "adm_hcw_a1d",
                     "adm_hcw_cps",
                     "adm_hcw_boost"),
-  depth = 36,               # how far to look back/forward (non-NA points)
+  depth = 36,               # full monthly analysis window, 2021-2023
   batch = TRUE,             # drop runs of offenders in one shot
   method = "interpolate",   # "set_na" | "carry_forward" | "interpolate"
   round_int = TRUE
   ) %>%
   
-  # Fill value forward through end of timeseries
+  # Fill target-group values forward after last report for end-period coverage
   group_by(iso) %>%
   arrange(month_name) %>%
   fill(adm_old_a1d_monotone,
@@ -73,8 +73,8 @@ data_admin_time_mt <- clean_coverage_monotone_df(
        adm_hcw_boost_monotone) %>%
   ungroup()
 
-# Interpolate between vaccine / booster introduction data and first report
-source("clean_interpolate.R")
+# Interpolate target-group uptake between introduction date and first report
+source(file.path(path_project, "clean_interpolate.R"))
 
 data_admin_time_interp <- interpolate_from_intro_wide_many(
   df = data_admin_time_mt,
@@ -91,7 +91,7 @@ data_admin_time_interp <- interpolate_from_intro_wide_many(
   suffix = "_interp",
   cps_delay_months = 2) %>%
   
-  # Cap cleaned figures at population max
+  # Cap cleaned figures at population max after interpolation
   mutate(
     adm_tot_a1d_monotone = pmin(adm_tot_a1d_monotone, pop_2021),
     adm_tot_cps_monotone = pmin(adm_tot_cps_monotone, pop_2021),
