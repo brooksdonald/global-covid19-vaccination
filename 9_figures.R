@@ -6,23 +6,20 @@ fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>%
   geom_boxplot(width = 0.1, color = "black") +
   facet_grid(group ~ measure, scales = "fixed", space = "free") +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
-  scale_fill_manual(values = palette_4) +
-  labs(title = "COVID-19 vaccination coverage by dose, population group, and income group, end-2023",
-       x = "Income group",
-       y = "Vaccination coverage (% of population)") + 
+  scale_fill_manual(values = pal_income) +
+  labs(title = "Vaccination coverage, end-2023",
+       x = label_axis_income,
+       y = label_axis_coverage) + 
   theme_master +
   theme(legend.position = "none")
 
 fig_1_cov_end2023_inc
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_1_cov_end2023_inc.jpg",
   plot = fig_1_cov_end2023_inc,
-  width = 10,
-  height = 7,
-  dpi = 300
+  size = "wide_tall"
 )
 
 
@@ -36,11 +33,11 @@ fig_2_comp_scatter <- data_fig_2_cov_cps_boost_priority_end2023 %>%
   facet_grid(group ~ dose) +
   scale_x_continuous(labels = percent_format(), limits = c(0, 1)) +
   scale_y_continuous(labels = percent_format(), limits = c(0, 1)) +
-  scale_fill_manual(values = palette_4) +
+  scale_fill_manual(values = pal_income) +
   coord_equal() +
-  labs(title = "End-2023 coverage parity: total population vs priority populations",
-       x = "Vaccination coverage in total population (% of pop.)",
-       y = "Vaccination coverage in priority population (% of pop.)") +
+  labs(title = "Coverage parity",
+       x = "Vaccination coverage in total population (% of population)",
+       y = "Vaccination coverage in priority population (% of population)") +
   theme_master +
   theme(legend.title = element_blank(),
         legend.text = element_text(size = 10),
@@ -55,9 +52,9 @@ fig_2_comp_summary <- data_fig_2_cov_cps_boost_priority_end2023 %>%
   geom_violin(trim = TRUE) +
   geom_boxplot(width = 0.18, color = "black") +
   facet_grid(group ~ dose) +
-  scale_fill_manual(values = palette_4) +
-  labs(title = "Difference from parity by income group, end-2023",
-       x = "Income group",
+  scale_fill_manual(values = pal_income) +
+  labs(title = "Difference from parity",
+       x = label_axis_income,
        y = "Difference in coverage (% points)") +
   theme_master +
   theme(legend.position = "none")
@@ -65,42 +62,57 @@ fig_2_comp_summary <- data_fig_2_cov_cps_boost_priority_end2023 %>%
 # Combine panels
 fig_2_cov_cps_boost_priority_end2023 <- (fig_2_comp_scatter | fig_2_comp_summary) + 
   plot_layout(widths = c(1.4, 1.0)) + 
-  plot_annotation(tag_levels = "A",
-                  theme = theme(plot.tag = 
-                                  element_text(face = "bold", size = 12)))
+  plot_annotation(tag_levels = "a",
+                  theme = panel_tag_theme)
 
 fig_2_cov_cps_boost_priority_end2023
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_2_cov_cps_boost_priority_end2023.jpg",
   plot = fig_2_cov_cps_boost_priority_end2023,
-  width = 13,
-  height = 7,
-  dpi = 300
+  size = "extra_wide"
 )
 
 
 # Figure 3 - administration over time, line, all, by reg, ig, covax -------
 
+data_fig_3_admin_time_labels <- data_fig_3_admin_time_all %>%
+  arrange(category, dimension, month_name) %>%
+  group_by(category, dimension) %>%
+  slice_tail(n = 1) %>%
+  ungroup()
+
 # Modify theme for figure
 theme_fig3 <- theme_master +
-  theme(legend.position = "bottom",
-        legend.justification = "left",
-        legend.text = element_text(size = 10),
-        plot.title = element_text(face = "italic", vjust = 3, size = 12),
-        panel.border = element_rect(color = "black", fill = NA, 
-                                    linewidth = 0.75))
+  theme(
+    legend.position = "none",
+    plot.title = element_text(face = "bold", vjust = 2, size = 11),
+    panel.border = element_rect(color = "black", fill = NA, linewidth = 0.75),
+    plot.margin = margin(0.2, 1.2, 0.2, 0.2, "cm")
+  )
 
 # Create component 1 - by WHO region
 fig_3_comp_region <- data_fig_3_admin_time_all %>%
   filter(category == "Region") %>%
   ggplot(aes(month_name, coverage, color = dimension)) +
   geom_line(linewidth = 1.2) +
-  geom_point(size = 2.2) +
-  coord_cartesian(ylim = c(0, 235)) +
-  scale_color_manual(values = c(palette_region, color_who_seq_1)) +
+  geom_text_repel(
+    data = data_fig_3_admin_time_labels %>% filter(category == "Region"),
+    aes(label = dimension),
+    size = 3,
+    direction = "y",
+    hjust = 0,
+    nudge_x = 35,
+    segment.color = "grey70",
+    segment.size = 0.25,
+    min.segment.length = 0,
+    show.legend = FALSE
+  ) +
+  coord_cartesian(ylim = c(0, 235), clip = "off") +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y",
+               expand = expansion(mult = c(0.02, 0.22))) +
+  scale_color_manual(values = pal_region_world) +
   labs(title = "WHO region", x = NULL, y = NULL, color = NULL) +
   theme_fig3
 
@@ -109,10 +121,23 @@ fig_3_comp_income <- data_fig_3_admin_time_all %>%
   filter(category == "Income group") %>%
   ggplot(aes(month_name, coverage, color = dimension)) +
   geom_line(linewidth = 1.2) +
-  geom_point(size = 2.2) +
-  coord_cartesian(ylim = c(0, 235)) +
-  scale_color_manual(values = c(palette_4, color_who_seq_1)) +
-  labs(title = "Income group", x = NULL, y = "Doses administered (per 100 population)", color = NULL) +
+  geom_text_repel(
+    data = data_fig_3_admin_time_labels %>% filter(category == "Income group"),
+    aes(label = dimension),
+    size = 3,
+    direction = "y",
+    hjust = 0,
+    nudge_x = 35,
+    segment.color = "grey70",
+    segment.size = 0.25,
+    min.segment.length = 0,
+    show.legend = FALSE
+  ) +
+  coord_cartesian(ylim = c(0, 235), clip = "off") +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y",
+               expand = expansion(mult = c(0.02, 0.22))) +
+  scale_color_manual(values = pal_income_world) +
+  labs(title = "Income group", x = NULL, y = label_axis_admin_per100, color = NULL) +
   theme_fig3
 
 # Create component 3 - by COVAX participation category
@@ -120,17 +145,30 @@ fig_3_comp_covax <- data_fig_3_admin_time_all %>%
   filter(category == "COVAX") %>%
   ggplot(aes(month_name, coverage, color = dimension)) +
   geom_line(linewidth = 1.2) +
-  geom_point(size = 2.2) +
-  coord_cartesian(ylim = c(0, 235)) +
-  scale_color_manual(values = c(color_who_cat_base_1, color_who_cat_base_2, color_who_seq_1)) +
-  labs(title = "COVAX participation category", x = NULL, y = NULL, color = NULL) +
+  geom_text_repel(
+    data = data_fig_3_admin_time_labels %>% filter(category == "COVAX"),
+    aes(label = dimension),
+    size = 3,
+    direction = "y",
+    hjust = 0,
+    nudge_x = 35,
+    segment.color = "grey70",
+    segment.size = 0.25,
+    min.segment.length = 0,
+    show.legend = FALSE
+  ) +
+  coord_cartesian(ylim = c(0, 235), clip = "off") +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y",
+               expand = expansion(mult = c(0.02, 0.22))) +
+  scale_color_manual(values = pal_covax) +
+  labs(title = "COVAX participation", x = NULL, y = NULL, color = NULL) +
   theme_fig3
 
 # Combine
 fig_3_admin_time_all <- fig_3_comp_income + fig_3_comp_region + fig_3_comp_covax +
   plot_layout(ncol = 3) + 
   plot_annotation(
-    title = "Doses administered in total population, by income group, region, and COVAX participation category, end-2023",
+    title = "Doses administered, 2021-2023",
     theme = theme(plot.title = element_text(face = "bold", size = 14, hjust = 0),
                   plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"))
     )
@@ -138,13 +176,10 @@ fig_3_admin_time_all <- fig_3_comp_income + fig_3_comp_region + fig_3_comp_covax
 fig_3_admin_time_all
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_3_admin_time_all.jpg",
   plot = fig_3_admin_time_all,
-  width = 11,
-  height = 7,
-  dpi = 300
+  size = "double_wide"
 )
 
 
@@ -174,12 +209,12 @@ fig_cov_time_global_compA <- data_fig_4_cov_time_world %>%
     show.legend = FALSE
   ) +
   facet_wrap(~group, ncol = 3) +
-  scale_color_manual(values = palette_3) +
+  scale_color_manual(values = pal_dose) +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
   labs(
-    title = "Population-weighted coverage across reporting countries",
+    title = "Population-weighted coverage",
     x = NULL,
-    y = "Vaccination coverage (% of pop.)",
+    y = label_axis_coverage,
     color = NULL
   ) +
   theme_master +
@@ -196,8 +231,8 @@ fig_cov_time_global_compB <- data_fig_5_cov_time_mediqr_compA_fix %>%
              fill = indicator, color = indicator)) +
   geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2) +
   geom_line(linewidth = 1) +
-  scale_colour_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
-  scale_fill_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
+  scale_colour_manual(values = pal_dose_compare) +
+  scale_fill_manual(values = pal_dose_compare) +
   scale_linetype_manual(values = c(
     "Complete primary series" = "solid",
     "At least one booster dose" = "22"
@@ -209,9 +244,9 @@ fig_cov_time_global_compB <- data_fig_5_cov_time_mediqr_compA_fix %>%
   ) +
   facet_wrap(~group, ncol = 3) +
   labs(
-    title = "Median (IQR) across reporting countries",
-    x = "Date",
-    y = "Vaccination coverage (% of pop.)",
+    title = "Median (IQR)",
+    x = label_axis_date,
+    y = label_axis_coverage,
     color = NULL, fill = NULL, linetype = NULL
   ) +
   theme_master +
@@ -228,25 +263,22 @@ fig_cov_time_global_compB <- data_fig_5_cov_time_mediqr_compA_fix %>%
 fig_4_cov_time_global_bygroup <- (fig_cov_time_global_compA / fig_cov_time_global_compB) +
   plot_layout(heights = c(1, 1)) +
   plot_annotation(
-    title = "Global COVID-19 vaccination coverage by population group, 2021-2023",
-    tag_levels = "A",
+    title = "Vaccination coverage over time",
+    tag_levels = "a",
     theme = theme(plot.title = element_text(face = "bold", hjust = 0, size = 14))
   ) &
+  (panel_tag_theme +
   theme(
-    plot.tag = element_text(face = "bold", size = 16, color = "black"),
     plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")
-  )
+  ))
 
 fig_4_cov_time_global_bygroup
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_4_cov_time_global_bygroup.jpg",
   plot = fig_4_cov_time_global_bygroup,
-  width = 11,
-  height = 8,
-  dpi = 300
+  size = "double_tall"
 )
 
 # Figure 5 - daily vaccination rate, line, 10/90 --------------------------
@@ -262,7 +294,7 @@ fig_6_dvr_summary_compA <- data_fig_5_dvr_summary_compA %>%
   labs(
     title = "Global",
     y = "Daily vaccination rate (% of population)",
-    x = "Date"
+    x = label_axis_date
   ) +
   theme_master +
   theme(
@@ -280,12 +312,12 @@ fig_6_dvr_summary_compB <- data_fig_5_dvr_summary_compB %>%
   scale_y_continuous(labels = scales::percent_format(),
                      limits = c(0, 0.012),
                      expand = c(0, 0)) +
-  scale_color_manual(values = palette_4) +
-  scale_fill_manual(values = palette_4) +
+  scale_color_manual(values = pal_income) +
+  scale_fill_manual(values = pal_income) +
   labs(title = "Income group",
-       x = "Date",
-       fill = "Income Group",
-       color = "Income Group") +
+       x = label_axis_date,
+       fill = label_legend_income,
+       color = label_legend_income) +
   theme_master +
   theme(axis.title.y = element_blank(),
         legend.position = "none",
@@ -295,25 +327,23 @@ fig_6_dvr_summary_compB <- data_fig_5_dvr_summary_compB %>%
 fig_6_dvr_summary <- (fig_6_dvr_summary_compA | fig_6_dvr_summary_compB) +
   plot_layout(widths = c(1, 2)) +
   plot_annotation(
-    title = "Daily COVID-19 vaccination rate, global and by income group (2021–2023)",
-    tag_levels = "A",
+    title = "Daily vaccination rate",
+    tag_levels = "a",
     theme = theme(plot.title = element_text(face = "bold", hjust = 0, size = 14))
     ) &
-  theme(plot.tag = element_text(face="bold", size = 16, color="black"),
+  (panel_tag_theme +
+  theme(
         plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
         panel.spacing = unit(0.35, "cm")
-        ) 
+        ))
 
 fig_6_dvr_summary
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_6_dvr_summary.jpg",
   plot = fig_6_dvr_summary,
-  width = 10,
-  height = 7,
-  dpi = 300
+  size = "wide_tall"
 )
 
 
@@ -339,10 +369,10 @@ fig_7_policy_2024_all_compA <- data_fig_7_policy_2024_all_compA %>%
             aes(x = total, y = group, label = total), 
             inherit.aes = FALSE, hjust = -0.25, size = 3.5, fontface = "bold") +
   scale_y_discrete(labels = wrap2, limits = rev) +
-  scale_fill_manual(values = palette_3, breaks = levels_policy_a,
+  scale_fill_manual(values = pal_policy, breaks = levels_policy_a,
                     labels = levels_policy_a, drop = FALSE) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.10))) +
-  labs(x = "Number of WHO Member States", y = NULL, fill = NULL) +
+  labs(x = label_axis_member_states_n, y = NULL, fill = NULL) +
   theme_fig7 +
   theme(
     legend.position = "none",
@@ -360,9 +390,9 @@ fig_7_policy_2024_all_compB <- data_fig_7_policy_2024_all_compB %>%
             position = position_stack(vjust = 0.5, reverse = TRUE), size = 3.5,
             fontface = "bold") +
   facet_wrap(~ group, ncol = 2) +
-  scale_fill_manual(values = palette_4, breaks = levels_policy_b, drop = FALSE) +
+  scale_fill_manual(values = pal_policy, breaks = levels_policy_b, drop = FALSE) +
   scale_x_continuous(limits = c(0, 100),expand = expansion(mult = c(0, 0.02))) +
-  labs(x = "Percentage of WHO Member States (within income group)", 
+  labs(x = paste0(label_axis_member_states_pct, " (within income group)"), 
        y = NULL, fill = NULL) +
   theme_fig7 +
   theme(legend.position = "none",
@@ -375,7 +405,7 @@ fig_7_policy_2024_all_compleg <- data_fig_7_policy_2024_all_compB %>%
   ggplot(aes(x = pct, y = income_group, fill = status_policy)) +
   geom_col() +
   scale_fill_manual(
-    values = palette_4,
+    values = pal_policy,
     breaks = levels_policy_b,
     drop = FALSE
   ) +
@@ -398,9 +428,9 @@ panels <- cowplot::plot_grid(
   rel_widths = c(1, 1.25),
   align = "hv",
   axis = "tb",
-  labels = c("A", "B"),
+  labels = c("a", "b"),
   label_fontface = "bold",
-  label_size = 14,
+  label_size = 10,
   label_x = c(0.02, 0.02),
   label_y = c(0.98, 0.98),
   hjust = 0,
@@ -415,7 +445,7 @@ fig_7_policy_2024_all <- cowplot::plot_grid(
   rel_heights = c(1, 0.13)
 ) +
   plot_annotation(
-    title = "National COVID-19 vaccination policy recommendations, 2024",
+    title = "Vaccination policy recommendations, 2024",
     theme = theme(plot.title = element_text(face = "bold", hjust = 0, size = 14))
   ) &
   theme(plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"))
@@ -423,13 +453,10 @@ fig_7_policy_2024_all <- cowplot::plot_grid(
 fig_7_policy_2024_all
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_7_policy_2024_all.jpg",
   plot = fig_7_policy_2024_all,
-  width = 11,
-  height = 7,
-  dpi = 300
+  size = "double_wide"
 )
 
 
@@ -445,18 +472,20 @@ combo <- count_time %>%
   ggplot(aes(x = date, y = count_month, fill = type)) +
   geom_col() +
   geom_line(aes(y = count_cumul, color = type), linewidth = 1.25) +
-  scale_color_manual(values = c(color_who_diverg_1, color_who_diverg_5), 
-                     labels = c("Complete primary series only", "Complete primary series & booster")) +
-  scale_fill_manual(values = c(color_who_diverg_2, color_who_diverg_4), 
-                    labels = c("Complete primary series only", "Complete primary series & booster")) +
+  scale_color_manual(values = pal_reporting, 
+                     labels = c("Complete primary series only",
+                                "Complete primary series and booster")) +
+  scale_fill_manual(values = pal_reporting_fill, 
+                    labels = c("Complete primary series only",
+                               "Complete primary series and booster")) +
   scale_x_date(date_labels = "%b %Y") +
   coord_cartesian(ylim = c(0, 200)) +
   geom_hline(aes(yintercept = 194), linetype = "dashed", color = "black") +
-  theme_test() + 
-  labs(title = "Member States reporting, cumulative and monthly",
+  theme_master + 
+  labs(title = "Member States reporting",
        subtitle = "By population group",
        y = "Count of reporting Member States",
-       caption = "Data source: WHO-UNICEF electronic Joint Reporting Form COVID-19 module and WHO regional reporting systems") + 
+       caption = label_source_reporting) + 
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(size = 10),
         axis.title.y = element_text(vjust = 4, size = 11),
@@ -472,13 +501,10 @@ combo <- count_time %>%
 
 combo
 
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_rep_disag_time.jpg",
   plot = combo,
-  width = 10,
-  height = 6,
-  dpi = 300
+  size = "wide"
 )
 
 
@@ -496,17 +522,14 @@ fig_report_cumul_inc <- count_time_inc %>%
                                                                         "Low income"))) %>%
   ggplot(aes(x = DATE, y = count_per, color = WBINCOME_LONG_STATUS)) +
   geom_line(size = 1.5) +
-  scale_color_manual(values = c(color_who_cat_base_1, 
-                                color_who_cat_base_2, 
-                                color_who_cat_base_3, 
-                                color_who_cat_base_4)) +
+  scale_color_manual(values = pal_income_long) +
   scale_x_date(date_labels = "%b %Y") +
   scale_y_continuous(labels = scales::percent_format()) +
-  theme_test() + 
-  labs(title = "Percentage of Member States reporting, cumulative",
+  theme_master + 
+  labs(title = "Reporting by income group",
        subtitle = "By population group, dose type, and income group",
        y = "Percentage of Member States",
-       caption = "Data source: WHO-UNICEF electronic Joint Reporting Form COVID-19 module and WHO regional reporting systems") + 
+       caption = label_source_reporting) + 
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(size = 10),
         axis.title.y = element_text(vjust = 4, size = 11),
@@ -524,13 +547,10 @@ fig_report_cumul_inc <- count_time_inc %>%
 
 fig_report_cumul_inc
 
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_report_cumul_inc.jpg",
   plot = fig_report_cumul_inc,
-  width = 10,
-  height = 6,
-  dpi = 300
+  size = "wide"
 )
 
 
@@ -538,18 +558,6 @@ export_plot(
 
 
 # Supp. Figure 4 - daily vaccination rate, income / region, weighted ------
-
-dvr_time_increg_colors <- c("Global" = color_who_seq_1,
-                            "AFR" = color_who_afr,
-                            "AMR" = color_who_amr,
-                            "EMR" = color_who_emr,
-                            "EUR" = color_who_eur,
-                            "SEAR" = color_who_sear,
-                            "WPR" = color_who_wpr,
-                            "HIC" = color_who_cat_base_1,
-                            "UMIC" = color_who_cat_base_2,
-                            "LMIC" = color_who_cat_base_3,
-                            "LIC" = color_who_cat_base_4)
 
 plot_dvr_time_increg_panel <- function(panel_type) {
   panel_data <- data_fig_supp_4_dvr_time_increg %>%
@@ -569,14 +577,14 @@ plot_dvr_time_increg_panel <- function(panel_type) {
     geom_point(data = panel_points,
                aes(x = adm_date, y = dvr_per, color = dimension), 
                size = 3, shape = 21, fill = "black", stroke = 0) +
-    scale_color_manual(values = dvr_time_increg_colors,
+    scale_color_manual(values = pal_dvr_all,
                        breaks = panel_dimensions,
                        limits = panel_dimensions,
                        drop = FALSE) +
     # scale_x_date(date_labels = "%b %Y") +
     scale_y_continuous(labels = scales::percent_format(),
                        limits = c(0, 0.01)) +
-    theme_test() + 
+    theme_master + 
     labs(title = panel_type,
          y = if (panel_type == "Income group") {
            "Percentage of total population"
@@ -584,7 +592,7 @@ plot_dvr_time_increg_panel <- function(panel_type) {
            NULL
          },
          x = if (panel_type == "All") {
-           "Date"
+           label_axis_date
          } else {
            NULL
          }) +
@@ -608,20 +616,17 @@ fig_supp_4_dvr_time_increg <- c("WHO region", "Income group", "All") %>%
   map(plot_dvr_time_increg_panel) %>%
   wrap_plots(ncol = 1) +
   plot_annotation(
-    title = "Daily vaccination rate in total population (weighted average), global, region and income group",
+    title = "Daily vaccination rate by subgroup",
     theme = theme(plot.title = element_text(face = "bold", vjust = 3, size = 14))
   )
 
 fig_supp_4_dvr_time_increg
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_supp_4_dvr_time_increg.jpg",
   plot = fig_supp_4_dvr_time_increg,
-  width = 10,
-  height = 7,
-  dpi = 300
+  size = "wide_tall"
 )
 
 
@@ -652,12 +657,12 @@ fig_supp_5_cov_time_weight_all <- data_fig_supp_5_cov_time_weight_all %>%
     show.legend = FALSE
   ) +
   facet_grid(dimension ~ group) +
-  scale_color_manual(values = palette_3) +
+  scale_color_manual(values = pal_dose) +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
-  labs(title = "COVID-19 vaccination coverage by population group, 2021–2023",
-       x = "Date",
-       y = "Vaccination coverage (% of population)",
-       color = "Legend") + 
+  labs(title = "Vaccination coverage over time",
+       x = label_axis_date,
+       y = label_axis_coverage,
+       color = NULL) + 
   theme_master + 
   theme(legend.title = element_blank(),
         legend.position = "bottom",
@@ -667,13 +672,10 @@ fig_supp_5_cov_time_weight_all <- data_fig_supp_5_cov_time_weight_all %>%
 fig_supp_5_cov_time_weight_all
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_supp_5_cov_time_weight_all.jpg",
   plot = fig_supp_5_cov_time_weight_all,
-  width = 9,
-  height = 11,
-  dpi = 300
+  size = "tall"
 )
 
 
@@ -685,14 +687,14 @@ fig_supp_6_cov_mediqr_all <- data_fig_supp_6_cov_mediqr_all %>%
   geom_ribbon(aes(ymin = perc_25, ymax = perc_75, fill = indicator, 
                   color = indicator), alpha = 0.2) +
   geom_line(linewidth = 1) +
-  scale_colour_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
-  scale_fill_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
+  scale_colour_manual(values = pal_dose_compare) +
+  scale_fill_manual(values = pal_dose_compare) +
   scale_linetype_manual(values = c("Complete primary series" = "solid", 
                                    "At least one booster dose" = "22")) + 
   scale_y_continuous(labels = scales::percent_format()) +
-  labs(title = "COVID-19 coverage (median, IQR), by population group and income group, 2021–2023",
-       x = "Date",
-       y = "Vaccination coverage (% of population)") +
+  labs(title = "Median coverage over time",
+       x = label_axis_date,
+       y = label_axis_coverage) +
   theme_master +
   theme(legend.position = "bottom",
         legend.title = element_blank(),
@@ -702,13 +704,10 @@ fig_supp_6_cov_mediqr_all <- data_fig_supp_6_cov_mediqr_all %>%
 fig_supp_6_cov_mediqr_all
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_supp_6_cov_mediqr_all.jpg",
   plot = fig_supp_6_cov_mediqr_all,
-  width = 10,
-  height = 7,
-  dpi = 300
+  size = "wide_tall"
 )
 
 
@@ -724,13 +723,13 @@ fig_supp_7_policy_revaccint <- data_fig_supp_7_policy_revaccint %>%
   geom_text(data = data_fig_supp_7_policy_revaccint_totals,
             aes(x = total, y = group, label = total),
             inherit.aes = FALSE, hjust = -0.15, size = 3, color = "grey20") +
-  scale_fill_manual(values = palette_3, limits = rev) +
+  scale_fill_manual(values = unname(pal_dose), limits = rev) +
   scale_y_discrete(labels = function(x) stringr::str_wrap(x, width = 20), 
                    limits = rev) +
   coord_cartesian(clip = "off") +
   labs(
-    title = "Recommended interval of periodic revaccination, by population group (2024)",
-    x = "Number of WHO Member States",
+    title = "Recommended revaccination interval, 2024",
+    x = label_axis_member_states_n,
     y = NULL,
     fill = "Interval (months)"
   ) +
@@ -747,13 +746,10 @@ fig_supp_7_policy_revaccint <- data_fig_supp_7_policy_revaccint %>%
 fig_supp_7_policy_revaccint
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_supp_7_policy_revaccint.jpg",
   plot = fig_supp_7_policy_revaccint,
-  width = 10,
-  height = 6,
-  dpi = 300
+  size = "wide"
 )
 
 
@@ -783,12 +779,12 @@ fig_4_cov_time_world <- data_fig_4_cov_time_world %>%
     show.legend = FALSE
   ) +
   facet_wrap(~group, ncol = 3) +
-  scale_color_manual(values = palette_3) +
+  scale_color_manual(values = pal_dose) +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
-  labs(title = "COVID-19 vaccination coverage by population group, 2021–2023",
-       x = "Date",
-       y = "Vaccination coverage (% of population)",
-       color = "Legend") + 
+  labs(title = "Vaccination coverage over time",
+       x = label_axis_date,
+       y = label_axis_coverage,
+       color = NULL) + 
   theme_master + 
   theme(legend.title = element_blank(),
         legend.position = "bottom",
@@ -798,13 +794,10 @@ fig_4_cov_time_world <- data_fig_4_cov_time_world %>%
 fig_4_cov_time_world
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_4_cov_time_world.jpg",
   plot = fig_4_cov_time_world,
-  width = 10,
-  height = 6,
-  dpi = 300
+  size = "wide"
 )
 
 
@@ -817,8 +810,8 @@ fig_5_cov_time_mediqr_compA <- data_fig_5_cov_time_mediqr_compA_fix %>%
              fill = indicator, color = indicator)) +
   geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2) +
   geom_line(linewidth = 1) +
-  scale_colour_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
-  scale_fill_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
+  scale_colour_manual(values = pal_dose_compare) +
+  scale_fill_manual(values = pal_dose_compare) +
   scale_linetype_manual(values = c(
     "Complete primary series" = "solid",
     "At least one booster dose" = "22"
@@ -827,8 +820,8 @@ fig_5_cov_time_mediqr_compA <- data_fig_5_cov_time_mediqr_compA_fix %>%
                      limits = c(0, 0.85),
                      expand = c(0, 0)) +
   labs(title = "Global",
-       x = "Date",
-       y = "Vaccination coverage (% of population)") +
+       x = label_axis_date,
+       y = label_axis_coverage) +
   theme_master +
   theme(
     legend.position = "bottom",
@@ -843,8 +836,8 @@ fig_5_cov_time_mediqr_compB <- data_fig_5_cov_time_mediqr_compB %>%
              fill = indicator, color = indicator)) +
   geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2) +
   geom_line(linewidth = 1) +
-  scale_colour_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
-  scale_fill_manual(values = c(color_who_cat_base_1, color_who_cat_base_4)) +
+  scale_colour_manual(values = pal_dose_compare) +
+  scale_fill_manual(values = pal_dose_compare) +
   scale_linetype_manual(values = c(
     "Complete primary series" = "solid",
     "At least one booster dose" = "22"
@@ -853,7 +846,7 @@ fig_5_cov_time_mediqr_compB <- data_fig_5_cov_time_mediqr_compB %>%
                      limits = c(0, 0.85),
                      expand = c(0, 0)) +
   labs(title = "Income group",
-       x = "Date",
+       x = label_axis_date,
        y = NULL) +
   theme_master +
   theme(
@@ -866,24 +859,21 @@ fig_5_cov_time_mediqr_compB <- data_fig_5_cov_time_mediqr_compB %>%
 fig_5_cov_time_mediqr <- (fig_5_cov_time_mediqr_compA | fig_5_cov_time_mediqr_compB) +
   plot_layout(widths = c(1, 2)) +
   plot_annotation(
-    title = "Total population COVID-19 coverage (median, IQR), global and by income group, 2021–2023",
-    tag_levels = "A",
+    title = "Total-population median coverage",
+    tag_levels = "a",
     theme = theme(plot.title = element_text(face = "bold", hjust = 0, size = 14))
   ) &
+  (panel_tag_theme +
   theme(
-    plot.tag = element_text(face="bold", size = 16, color="black"),
     plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"),
     panel.spacing = unit(0.4, "cm")
-  )
+  ))
 
 fig_5_cov_time_mediqr
 
 # Export
-export_plot(
-  path = path_save,
+export_figure(
   filename = "fig_5_cov_time_mediqr.jpg",
   plot = fig_5_cov_time_mediqr,
-  width = 11,
-  height = 7,
-  dpi = 300
+  size = "double_wide"
 )

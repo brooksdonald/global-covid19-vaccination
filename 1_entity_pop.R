@@ -33,6 +33,7 @@ base_adhoc <- raw_adhoc %>%
             pol_old_source = pol_old_source,
             date_intro = min_vx_rollout_date,
             adm_tar_hcw = adm_tar_hcw,
+            adm_tar_hcw_wpro = adm_tar_hcw_wpro,
             pop_hcw = pop_hcw)
 
 
@@ -117,7 +118,11 @@ base_population <- pop_tot %>%
 # Merge entity & adhoc details and population dataframes
 entity_pop <- base_entity %>%
   left_join(., base_adhoc, by = "iso") %>%
-  left_join(., base_population, by = "iso")
+  left_join(., base_population, by = "iso") %>%
+  mutate(adm_target_hcw = case_when(
+    is.na(adm_tar_hcw_wpro) ~ adm_tar_hcw,
+    TRUE ~ adm_tar_hcw_wpro
+  ))
 
 
 # End ---------------------------------------------------------------------

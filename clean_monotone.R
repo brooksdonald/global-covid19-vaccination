@@ -51,6 +51,10 @@ suppressPackageStartupMessages({
   }
   cnt
 }
+.is_close_to_prior <- function(current, prior, rel_tol = 0.001) {
+  if (is.na(current) || is.na(prior)) return(FALSE)
+  abs(current - prior) <= max(1, abs(prior) * rel_tol)
+}
 .remove_prev_run <- function(y, i_prev_start, threshold, depth) {
   changed_idx <- integer(0); reps <- 0L; j <- i_prev_start
   while (!is.na(j) && j >= 1L && reps < max(1L, depth)) {
@@ -84,10 +88,17 @@ suppressPackageStartupMessages({
       if (!is.na(a) && !is.na(b) && a > b) {
         remove_prev_side <- FALSE
         pprev <- .prev_non_na_idx(y, p)
+        prev_larger <- .count_prev_larger_nonconsec(y, p, b, depth)
+        after_smaller <- .count_after_smaller_nonconsec(y, i, a, depth)
+        # Sustained later lower reports are evidence that the preceding high
+        # run was the anomaly, including isolated first reports.
         if (!is.na(pprev) && !is.na(y[pprev]) && y[pprev] > b) {
-          prev_larger   <- .count_prev_larger_nonconsec(y, p, b, depth)
-          after_smaller <- .count_after_smaller_nonconsec(y, i, a, depth)
-          remove_prev_side <- prev_larger > after_smaller
+          remove_prev_side <- after_smaller >= prev_larger
+        } else if (!is.na(pprev) && !is.na(y[pprev]) && y[pprev] <= b) {
+          remove_prev_side <- after_smaller >= min(2L, depth) ||
+            (after_smaller >= 1L && .is_close_to_prior(b, y[pprev]))
+        } else if (is.na(pprev)) {
+          remove_prev_side <- after_smaller >= min(2L, depth)
         }
         if (remove_prev_side) {
           rm <- .remove_prev_run(y, p, threshold = b, depth = depth)

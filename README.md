@@ -8,7 +8,7 @@ and figures for the manuscript:
 
 The analysis summarizes COVID-19 vaccination coverage in the total population,
 older adults, and health and care workers, with stratification by income group,
-WHO region, COVAX participation category, and policy category.
+WHO region, COVAX Facility participation category, and policy category.
 
 ## Repository Structure
 
@@ -40,7 +40,7 @@ Local input files:
 - `input/data_export_WIISE_REF_COUNTRIES.csv`: WHO reference country/entity metadata.
 - `input/data_export_WIISE_MT_REF_POPULATIONS.csv`: Population estimates by country, year, and age group.
 - `input/base_adhoc.xlsx`: Manually curated country-level fields, including older adult policy age thresholds, introduction dates, and health and care worker denominator information.
-- `input/output_master_test.xlsx`: 2021-2023 COVID-19 vaccination administrative uptake data used for acute-period analyses.
+- `input/output_master_test.xlsx`: 2021-2023 workbook retained for daily vaccination rate analyses during API-native porting.
 - `input/output_new.xlsx`: 2024 policy and uptake data used for routine-period analyses.
 - `input/output_master.xlsx`: Earlier/archival workbook retained in the repository but not currently read by `0_master.R`.
 - `input/2026-06-12_MT_COV_UPTAKE_TARGETGROUP_LONG.json`: Cached WHO API extract for target-group uptake data.
@@ -52,9 +52,18 @@ The cached JSON files were downloaded from:
 - `https://xmart-api-public.who.int/WIISE/COV_UPTAKE_WEEKLY`
 
 By default, `0_master.R` reads the cached JSON files rather than calling the live
-API. To refresh these snapshots from the live API, set the environment variable
-`COVID_VAX_USE_LIVE_API=true` before running the script. Refreshing the API
-snapshots may change the analysis results if the upstream data have changed.
+API. Total-population monthly administrative uptake values are prepared from
+`COV_UPTAKE_WEEKLY` in `2_data cleaning.R` by selecting the last available
+weekly report in each country-month and assigning it to the first day of that
+month. Target-group monthly administrative uptake values for older adults and
+health and care workers are prepared from `MT_COV_UPTAKE_TARGETGROUP_LONG` in
+the same script. This mirrors the month representation used in CVAP's coverage
+workflow, where monthly periods are stored as first-of-month dates for R
+processing.
+
+To refresh these snapshots from the live API, set `refresh_api <- TRUE` near the
+top of `0_master.R` before running the script. Refreshing the API snapshots may
+change the analysis results if the upstream data have changed.
 
 ## Software Requirements
 
@@ -101,11 +110,8 @@ already exist.
 To run the analysis without exporting figures or tables, set
 `export_outputs <- FALSE` near the top of `0_master.R`.
 
-To force a live WHO API refresh instead of using the cached JSON files:
-
-```bash
-COVID_VAX_USE_LIVE_API=true Rscript 0_master.R
-```
+Target-group uptake and daily vaccination rate inputs are still workbook-backed
+during the current porting step.
 
 ## Expected Runtime
 
@@ -146,7 +152,17 @@ Supplementary and additional outputs:
 
 - The working directory should not need to be set manually.
 - The analysis uses cached WHO API snapshots by default and does not require
-  internet access unless `COVID_VAX_USE_LIVE_API=true` is set.
+  internet access unless `refresh_api <- TRUE` is set.
+- The intended direction of this analysis is to use WHO administrative data
+  from API extracts directly, rather than relying on pre-cleaned workbook
+  exports. During manuscript development, some workbook inputs are retained
+  while the API-native workflow is being ported.
+- Administrative uptake data cleaning is implemented locally in this repository
+  to make the exact analytic workflow reproducible for this manuscript. The
+  cleaning approach is adapted from the WHO COVID-19 Vaccine Analysis Pipeline
+  (CVAP), with a separate methods paper on the CVAP cleaning algorithm planned.
+  Once CVAP is publication-ready and has a stable, citable release, this
+  analysis may be refactored to call CVAP or a shared cleaning module directly.
 - The exact package environment is recorded in `renv.lock`; run
   `renv::restore()` before reproducing the outputs.
 - Before public release, remove local/session artifacts such as `.RData`,

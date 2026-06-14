@@ -54,17 +54,10 @@ path_input <- file.path(path_project, "input")
 path_save <- file.path(path_project, "output")
 
 export_outputs <- TRUE
+refresh_api <- FALSE
 
 if (isTRUE(export_outputs) && !dir.exists(path_save)) {
   dir.create(path_save, recursive = TRUE)
-}
-
-export_plot <- function(...) {
-  if (isTRUE(export_outputs)) {
-    return(ggsave(...))
-  }
-
-  invisible(NULL)
 }
 
 export_docx <- function(...) {
@@ -75,20 +68,52 @@ export_docx <- function(...) {
   invisible(NULL)
 }
 
-# Read dated WHO API snapshots by default. Set COVID_VAX_USE_LIVE_API=true
-# only when refreshing the raw API inputs for a new analysis snapshot.
-read_who_api_json <- function(url, cache_file) {
-  use_live_api <- identical(tolower(Sys.getenv("COVID_VAX_USE_LIVE_API")), "true")
+figure_specs <- list(
+  square = list(width = 7, height = 7),
+  wide = list(width = 10, height = 6),
+  wide_tall = list(width = 10, height = 7),
+  double_wide = list(width = 11, height = 7),
+  double_tall = list(width = 11, height = 8),
+  extra_wide = list(width = 13, height = 7),
+  tall = list(width = 9, height = 11)
+)
 
-  if (file.exists(cache_file) && !use_live_api) {
+export_figure <- function(filename, plot, size = "wide_tall", width = NULL,
+                          height = NULL, dpi = 300, path = path_save) {
+  if (!isTRUE(export_outputs)) {
+    return(invisible(NULL))
+  }
+
+  if (!size %in% names(figure_specs)) {
+    stop("Unknown figure size: ", size, call. = FALSE)
+  }
+
+  spec <- figure_specs[[size]]
+  if (is.null(width)) width <- spec$width
+  if (is.null(height)) height <- spec$height
+
+  ggsave(
+    path = path,
+    filename = filename,
+    plot = plot,
+    width = width,
+    height = height,
+    dpi = dpi
+  )
+}
+
+# Read dated WHO API snapshots by default. Set refresh_api <- TRUE only when
+# refreshing the raw API inputs for a new analysis snapshot.
+read_who_api_json <- function(url, cache_file) {
+  if (file.exists(cache_file) && !isTRUE(refresh_api)) {
     message("Reading cached WHO API data: ", cache_file)
     return(fromJSON(cache_file, flatten = TRUE))
   }
 
-  if (!use_live_api) {
+  if (!isTRUE(refresh_api)) {
     stop(
       "Cached WHO API file not found: ", cache_file, "\n",
-      "Use the committed cache file, or set COVID_VAX_USE_LIVE_API=true ",
+      "Use the committed cache file, or set refresh_api <- TRUE ",
       "to fetch a live copy and overwrite the cache.",
       call. = FALSE
     )
@@ -150,6 +175,45 @@ palette_5 <- c(color_who_cat_base_1, color_who_cat_base_2,
 palette_region <- c(color_who_afr, color_who_amr, color_who_emr, color_who_eur,
                     color_who_sear, color_who_wpr)
 
+pal_dose <- setNames(palette_3, levels_indicator)
+pal_dose_compare <- c("Complete primary series" = color_who_seq_1,
+                      "At least one booster dose" = color_who_cat_base_1)
+pal_income <- setNames(palette_4, levels_income)
+pal_income_long <- setNames(palette_4,
+                            c("High income", "Upper middle income",
+                              "Lower middle income", "Low income"))
+pal_region <- setNames(palette_region, levels_region)
+pal_covax <- c("AMC" = color_who_cat_base_1,
+               "Self-financing" = color_who_cat_base_2,
+               "Non-COVAX" = color_who_cat_base_3,
+               "World" = color_who_seq_1)
+pal_income_world <- c(pal_income, "World" = color_who_seq_1)
+pal_region_world <- c(pal_region, "World" = color_who_seq_1)
+pal_policy <- palette_4
+pal_reporting <- c("Complete primary series" = color_who_diverg_1,
+                   "Booster" = color_who_diverg_5)
+pal_reporting_fill <- c("Complete primary series" = color_who_diverg_2,
+                        "Booster" = color_who_diverg_4)
+pal_dvr_all <- c("Global" = color_who_seq_1,
+                 pal_region,
+                 pal_income)
+
+label_axis_coverage <- "Vaccination coverage (% of population)"
+label_axis_admin_per100 <- "Doses administered (per 100 population)"
+label_axis_income <- "Income group"
+label_axis_date <- "Date"
+label_axis_member_states_n <- "Number of WHO Member States"
+label_axis_member_states_pct <- "Percentage of WHO Member States"
+label_legend_income <- "Income group"
+label_source_reporting <- paste(
+  "Data source: WHO-UNICEF electronic Joint Reporting Form COVID-19 module",
+  "and WHO regional reporting systems"
+)
+
+panel_tag_theme <- theme(
+  plot.tag = element_text(face = "bold", size = 10, color = "black")
+)
+
 
 # Extract data ------------------------------------------------------------
 
@@ -164,11 +228,7 @@ raw_adhoc <- data.frame(
 raw_population <- data.frame(
   read.csv(file.path(path_input, "data_export_WIISE_MT_REF_POPULATIONS.csv")))
 
-# Load 2021-2023 uptake data
-raw_data_acute_time <- data.frame(
-  read_excel(file.path(path_input, "output_master_test.xlsx"),
-             sheet = "1_stock")) 
-
+# Load 2021-2023 daily uptake data for daily vaccination rate analysis
 raw_data_acute_time_daily <- data.frame(
   read_excel(file.path(path_input, "output_master_test.xlsx"),
              sheet = "1_adm_all_long"))

@@ -109,10 +109,10 @@ list2env(as.list(covax_tot_count_scal), envir = .GlobalEnv)
 
 ## Reporting (a1d) WHO MS
 rep_tot_a1d <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_a1d_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_a1d_monotone_interp), 
             by = "iso") %>%
   filter(status_who == "Member State",
-         !is.na(adm_tot_a1d_monotone)) %>%
+         !is.na(adm_tot_a1d_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_a1d = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_a1d = n()
@@ -123,10 +123,10 @@ list2env(as.list(rep_tot_a1d), envir = .GlobalEnv)
 
 ## Reporting (cps) WHO MS
 rep_tot_cps <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_cps_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_cps_monotone_interp), 
             by = "iso") %>%
   filter(status_who == "Member State",
-         !is.na(adm_tot_cps_monotone)) %>%
+         !is.na(adm_tot_cps_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_cps = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_cps = n()
@@ -137,10 +137,10 @@ list2env(as.list(rep_tot_cps), envir = .GlobalEnv)
 
 ## Reporting (booster) WHO MS
 rep_tot_boost <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_boost_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_boost_monotone_interp), 
             by = "iso") %>%
   filter(status_who == "Member State",
-         !is.na(adm_tot_boost_monotone)) %>%
+         !is.na(adm_tot_boost_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_boost = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_boost = n()
@@ -153,10 +153,10 @@ list2env(as.list(rep_tot_boost), envir = .GlobalEnv)
 
 ## Reporting (a1d) WHO MS
 region_rep_tot_a1d <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_a1d_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_a1d_monotone_interp), 
             by = "iso") %>%
   filter(status_who == "Member State",
-         !is.na(adm_tot_a1d_monotone)) %>%
+         !is.na(adm_tot_a1d_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_a1d = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_a1d  = n(),
@@ -184,10 +184,10 @@ list2env(as.list(region_rep_tot_a1d_count_scal), envir = .GlobalEnv)
 
 ## Reporting (cps) WHO MS
 region_rep_tot_cps <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_cps_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_cps_monotone_interp), 
             by = "iso") %>%
   filter(status_who == "Member State",
-         !is.na(adm_tot_cps_monotone)) %>%
+         !is.na(adm_tot_cps_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_cps = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_cps = n(),
@@ -215,10 +215,10 @@ list2env(as.list(region_rep_tot_cps_count_scal), envir = .GlobalEnv)
 
 ## Reporting (booster) WHO MS
 region_rep_tot_boost <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_boost_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_boost_monotone_interp), 
             by = "iso") %>%
   filter(status_who == "Member State",
-         !is.na(adm_tot_boost_monotone)) %>%
+         !is.na(adm_tot_boost_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_boost = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_boost = n(),
@@ -248,12 +248,12 @@ list2env(as.list(region_rep_tot_boost_count_scal), envir = .GlobalEnv)
 
 ## Reporting (a1d) WHO MS
 income_rep_tot_a1d <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_a1d_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_a1d_monotone_interp), 
             by = "iso") %>%
   filter(status_who == "Member State",
          !is.na(income_group),
          income_group != "",
-         !is.na(adm_tot_a1d_monotone)) %>%
+         !is.na(adm_tot_a1d_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_a1d = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_a1d  = n(),
@@ -281,12 +281,12 @@ list2env(as.list(income_rep_tot_a1d_count_scal), envir = .GlobalEnv)
 
 ## Reporting (cps) WHO MS
 income_rep_tot_cps <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_cps_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_cps_monotone_interp), 
             by = "iso") %>%
   filter(status_who == "Member State",
          !is.na(income_group),
          income_group != "",
-         !is.na(adm_tot_cps_monotone)) %>%
+         !is.na(adm_tot_cps_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_cps = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_cps = n(),
@@ -314,12 +314,12 @@ list2env(as.list(income_rep_tot_cps_count_scal), envir = .GlobalEnv)
 
 ## Reporting (booster) WHO MS
 income_rep_tot_boost <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_boost_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_boost_monotone_interp), 
             by = "iso") %>%
   filter(status_who == "Member State",
          !is.na(income_group),
          income_group != "",
-         !is.na(adm_tot_boost_monotone)) %>%
+         !is.na(adm_tot_boost_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_boost = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_boost = n(),
@@ -349,10 +349,10 @@ list2env(as.list(income_rep_tot_boost_count_scal), envir = .GlobalEnv)
 
 ## Reporting (a1d) WHO MS + 2 RE
 covax_rep_tot_a1d <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_a1d_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_a1d_monotone_interp), 
             by = "iso") %>%
   filter(!is.na(status_covax),
-         !is.na(adm_tot_a1d_monotone)) %>%
+         !is.na(adm_tot_a1d_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_a1d = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_a1d  = n(),
@@ -380,10 +380,10 @@ list2env(as.list(covax_rep_tot_a1d_count_scal), envir = .GlobalEnv)
 
 ## Reporting (cps) WHO MS + 2 RE
 covax_rep_tot_cps <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_cps_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_cps_monotone_interp), 
             by = "iso") %>%
   filter(!is.na(status_covax),
-         !is.na(adm_tot_cps_monotone)) %>%
+         !is.na(adm_tot_cps_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_cps = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_cps = n(),
@@ -411,10 +411,10 @@ list2env(as.list(covax_rep_tot_cps_count_scal), envir = .GlobalEnv)
 
 ## Reporting (booster) WHO MS + 2 RE
 covax_rep_tot_boost <- entity_pop %>%
-  left_join(., data_admin_last %>% select(iso, adm_tot_boost_monotone), 
+  left_join(., data_admin_last %>% select(iso, adm_tot_boost_monotone_interp), 
             by = "iso") %>%
   filter(!is.na(status_covax),
-         !is.na(adm_tot_boost_monotone)) %>%
+         !is.na(adm_tot_boost_monotone_interp)) %>%
   summarise(
     pop_rep_tot_2021_boost = sum(pop_2021, na.rm = TRUE),
     count_rep_tot_boost = n(),
@@ -1261,6 +1261,48 @@ covax_rep_hcw_boost_count_scal <- covax_rep_hcw_boost %>%
   pivot_wider(names_from = name, values_from = value)
 
 list2env(as.list(covax_rep_hcw_boost_count_scal), envir = .GlobalEnv)
+
+
+ensure_reporting_scalar <- function(name) {
+  if (!exists(name, envir = .GlobalEnv, inherits = FALSE)) {
+    assign(name, NA_real_, envir = .GlobalEnv)
+  }
+}
+
+reporting_scalar_dimensions <- c(
+  tolower(levels_income),
+  tolower(levels_region),
+  "amc",
+  "self-financing",
+  "non-covax"
+)
+
+reporting_scalar_roots <- c(
+  "pop_rep_tot_2021_a1d",
+  "pop_rep_tot_2021_cps",
+  "pop_rep_tot_2021_boost",
+  "pop_rep_old_2021_a1d",
+  "pop_rep_old_2021_cps",
+  "pop_rep_old_2021_boost",
+  "pop_rep_hcw_a1d",
+  "pop_rep_hcw_cps",
+  "pop_rep_hcw_boost",
+  "count_rep_tot_a1d",
+  "count_rep_tot_cps",
+  "count_rep_tot_boost",
+  "count_rep_old_a1d",
+  "count_rep_old_cps",
+  "count_rep_old_boost",
+  "count_rep_hcw_a1d",
+  "count_rep_hcw_cps",
+  "count_rep_hcw_boost"
+)
+
+for (scalar_root in reporting_scalar_roots) {
+  for (scalar_dimension in reporting_scalar_dimensions) {
+    ensure_reporting_scalar(paste0(scalar_root, "_", scalar_dimension))
+  }
+}
 
 
 # End ---------------------------------------------------------------------

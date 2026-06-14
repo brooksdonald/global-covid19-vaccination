@@ -13,7 +13,7 @@ type_labels <- c(
 type_order <- c("All", "Income group", "WHO region", "COVAX participation category")
 
 # within-section order
-covax_order <- c("AMC", "Self-financing", "No")  # adjust if desired
+covax_order <- c("AMC", "Self-financing", "Non-COVAX")
 
 # short labels for subcolumns
 measure_labels <- c(
@@ -141,7 +141,7 @@ export_docx(ft, path = file.path(path_save, "Table_1_end-2023_coverage.docx"))
 
 section_order <- c("All", "Income group", "WHO region", "COVAX participation category")
 
-covax_order  <- c("AMC", "Self-financing", "No")  # only used if present
+covax_order  <- c("AMC", "Self-financing", "Non-COVAX")  # only used if present
 
 base <- dvr_max %>%
   mutate(
@@ -327,6 +327,5 @@ tab_3_coverage_2024
 # Export
 export_docx(tab_3_coverage_2024,
              path = file.path(path_save, "Table_3_2024 coverage.docx"))
-
 
 

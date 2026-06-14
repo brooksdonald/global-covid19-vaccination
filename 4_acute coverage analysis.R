@@ -5,21 +5,19 @@
 data_cov_time_country <- data_admin_time_interp %>%
   
   # Calculate coverage in total population
-  mutate(cov_tot_a1d = pmin(adm_tot_a1d_monotone / pop_2021, 1),
-         cov_tot_cps = pmin(adm_tot_cps_monotone / pop_2021, 1),
-         cov_tot_boost = pmin(adm_tot_boost_monotone / pop_2021, 1),
-  
-  # Calculate admin. data adjustment-related fields
-         hcw_flag = if_else(pop_hcw > adm_tar_hcw, "Yes", NA_character_),
-         hcw_diff = pmax(pop_hcw - adm_tar_hcw, 0, na.rm = TRUE),
-  
-  # Adjust admin. data for HCWs
+  mutate(cov_tot_a1d = pmin(adm_tot_a1d_monotone_interp / pop_2021, 1),
+         cov_tot_cps = pmin(adm_tot_cps_monotone_interp / pop_2021, 1),
+         cov_tot_boost = pmin(adm_tot_boost_monotone_interp / pop_2021, 1),
+
+  # Apply HCW denominator-gap adjustment after cleaning observed HCW reports
+         hcw_flag = if_else(pop_hcw > adm_target_hcw, "Yes", NA_character_),
+         hcw_diff = pmax(pop_hcw - adm_target_hcw, 0, na.rm = TRUE),
          adm_hcw_a1d_monotone_interp = pmin(
            adm_hcw_a1d_monotone_interp + (hcw_diff * cov_tot_a1d), pop_hcw),
          adm_hcw_cps_monotone_interp = pmin(
            adm_hcw_cps_monotone_interp + (hcw_diff * cov_tot_cps), pop_hcw),
          adm_hcw_boost_monotone_interp = pmin(
-           adm_hcw_boost_monotone_interp + (hcw_diff * cov_tot_boost), pop_hcw),   
+           adm_hcw_boost_monotone_interp + (hcw_diff * cov_tot_boost), pop_hcw),
   
   # Calculate coverage in priority populations
          cov_hcw_a1d = pmin(adm_hcw_a1d_monotone_interp / pop_hcw, 1),
@@ -302,15 +300,15 @@ data_cov_last <- data_cov_time_country %>%
 
 # Calculate 2021-2023 coverage timeseries, world --------------------------
 
-data_cov_time_world_full <- data_admin_time_interp %>%
+data_cov_time_world_full <- data_cov_time_country %>%
   
   # Summarize across all Member States
   filter(status_who == "Member State") %>%
   group_by(month_name) %>%
-  summarize(adm_tot_td = sum(adm_tot_td, na.rm = TRUE),
-            adm_tot_a1d = sum(adm_tot_a1d, na.rm = TRUE),
-            adm_tot_cps = sum(adm_tot_cps, na.rm = TRUE),
-            adm_tot_boost = sum(adm_tot_boost, na.rm = TRUE),
+  summarize(adm_tot_td = sum(adm_tot_td_monotone_interp, na.rm = TRUE),
+            adm_tot_a1d = sum(adm_tot_a1d_monotone_interp, na.rm = TRUE),
+            adm_tot_cps = sum(adm_tot_cps_monotone_interp, na.rm = TRUE),
+            adm_tot_boost = sum(adm_tot_boost_monotone_interp, na.rm = TRUE),
             
             adm_old_a1d = sum(adm_old_a1d_monotone_interp, na.rm = TRUE),
             adm_old_cps = sum(adm_old_cps_monotone_interp, na.rm = TRUE),
@@ -365,7 +363,7 @@ data_cov_time_world_full <- data_admin_time_interp %>%
 
 # Calculate 2021-2023 coverage timeseries, income -------------------------
 
-data_cov_time_income_full <- data_admin_time_interp %>%
+data_cov_time_income_full <- data_cov_time_country %>%
   
   # Summarize across all Member States
   filter(status_who == "Member State",
@@ -373,10 +371,10 @@ data_cov_time_income_full <- data_admin_time_interp %>%
          income_group != "") %>%
   group_by(month_name,
            income_group) %>%
-  summarize(adm_tot_td = sum(adm_tot_td, na.rm = TRUE),
-            adm_tot_a1d = sum(adm_tot_a1d, na.rm = TRUE),
-            adm_tot_cps = sum(adm_tot_cps, na.rm = TRUE),
-            adm_tot_boost = sum(adm_tot_boost, na.rm = TRUE),
+  summarize(adm_tot_td = sum(adm_tot_td_monotone_interp, na.rm = TRUE),
+            adm_tot_a1d = sum(adm_tot_a1d_monotone_interp, na.rm = TRUE),
+            adm_tot_cps = sum(adm_tot_cps_monotone_interp, na.rm = TRUE),
+            adm_tot_boost = sum(adm_tot_boost_monotone_interp, na.rm = TRUE),
             
             adm_old_a1d = sum(adm_old_a1d_monotone_interp, na.rm = TRUE),
             adm_old_cps = sum(adm_old_cps_monotone_interp, na.rm = TRUE),
@@ -459,16 +457,16 @@ data_cov_time_income_full <- data_admin_time_interp %>%
 
 # Calculate 2021-2023 coverage timeseries, region ---------------------------------------------
 
-data_cov_time_region_full <- `data_admin_time_interp` %>%
+data_cov_time_region_full <- data_cov_time_country %>%
   
   # Summarize across all Member States
   filter(status_who == "Member State") %>%
   group_by(month_name,
            region_who) %>%
-  summarize(adm_tot_td = sum(adm_tot_td, na.rm = TRUE),
-            adm_tot_a1d = sum(adm_tot_a1d, na.rm = TRUE),
-            adm_tot_cps = sum(adm_tot_cps, na.rm = TRUE),
-            adm_tot_boost = sum(adm_tot_boost, na.rm = TRUE),
+  summarize(adm_tot_td = sum(adm_tot_td_monotone_interp, na.rm = TRUE),
+            adm_tot_a1d = sum(adm_tot_a1d_monotone_interp, na.rm = TRUE),
+            adm_tot_cps = sum(adm_tot_cps_monotone_interp, na.rm = TRUE),
+            adm_tot_boost = sum(adm_tot_boost_monotone_interp, na.rm = TRUE),
             
             adm_old_a1d = sum(adm_old_a1d_monotone_interp, na.rm = TRUE),
             adm_old_cps = sum(adm_old_cps_monotone_interp, na.rm = TRUE),
@@ -569,16 +567,16 @@ data_cov_time_region_full <- `data_admin_time_interp` %>%
 
 # Calculate 2021-2023 coverage timeseries, covax ---------------------------------------------
 
-data_cov_time_covax_full <- data_admin_time_interp %>%
+data_cov_time_covax_full <- data_cov_time_country %>%
   
   # Summarize across all WHO MS & 2 REs
   filter(!is.na(status_covax)) %>%
   group_by(month_name,
            status_covax) %>%
-  summarize(adm_tot_td = sum(adm_tot_td, na.rm = TRUE),
-            adm_tot_a1d = sum(adm_tot_a1d, na.rm = TRUE),
-            adm_tot_cps = sum(adm_tot_cps, na.rm = TRUE),
-            adm_tot_boost = sum(adm_tot_boost, na.rm = TRUE),
+  summarize(adm_tot_td = sum(adm_tot_td_monotone_interp, na.rm = TRUE),
+            adm_tot_a1d = sum(adm_tot_a1d_monotone_interp, na.rm = TRUE),
+            adm_tot_cps = sum(adm_tot_cps_monotone_interp, na.rm = TRUE),
+            adm_tot_boost = sum(adm_tot_boost_monotone_interp, na.rm = TRUE),
             
             adm_old_a1d = sum(adm_old_a1d_monotone_interp, na.rm = TRUE),
             adm_old_cps = sum(adm_old_cps_monotone_interp, na.rm = TRUE),
@@ -729,14 +727,14 @@ data_fig_2_cov_cps_boost_priority_end2023 <- data_cov_last %>%
 
 # Figure 3
 ##  Add global figures to each category
-data_fig_3_admin_time_world <- raw_data_acute_time %>%
-  select(a_iso,
+data_fig_3_admin_time_world <- data_admin_time_interp %>%
+  select(iso,
          month_name,
-         a_status_who,
-         adm_tot_td) %>%
-  filter(a_status_who == "Member State") %>%
+         status_who,
+         adm_tot_td_monotone_interp) %>%
+  filter(status_who == "Member State") %>%
   group_by(month_name) %>%
-  summarize(adm_td_tot = sum(adm_tot_td, na.rm = TRUE)) %>%
+  summarize(adm_td_tot = sum(adm_tot_td_monotone_interp, na.rm = TRUE)) %>%
   ungroup()
 
 data_fig_3_admin_time_all_cov <- data_fig_3_admin_time_world %>%
@@ -754,68 +752,67 @@ data_fig_3_admin_time_world <- data_fig_3_admin_time_world %>%
   mutate(coverage = (adm_td_tot / pop_total_2021_world) * 100)
 
 ##  Create grouping figures
-data_fig_3_admin_time_income <- raw_data_acute_time %>%
-  select(a_iso,
+data_fig_3_admin_time_income <- data_admin_time_interp %>%
+  select(iso,
          month_name,
-         a_status_who,
-         a_income_group,
-         adm_tot_td) %>%
-  filter(a_status_who == "Member State",
-         a_income_group != "Other") %>%
-  select(-a_status_who) %>%
-  group_by(month_name, a_income_group) %>%
-  summarize(adm_td_tot = sum(adm_tot_td, na.rm = TRUE)) %>%
+         status_who,
+         income_group,
+         adm_tot_td_monotone_interp) %>%
+  filter(status_who == "Member State",
+         income_group != "Other") %>%
+  select(-status_who) %>%
+  group_by(month_name, income_group) %>%
+  summarize(adm_td_tot = sum(adm_tot_td_monotone_interp, na.rm = TRUE)) %>%
   mutate(coverage = case_when(
-    a_income_group == "HIC" ~ adm_td_tot / pop_total_2021_hic * 100,
-    a_income_group == "UMIC" ~ adm_td_tot / pop_total_2021_umic * 100,
-    a_income_group == "LMIC" ~ adm_td_tot / pop_total_2021_lmic * 100,
-    a_income_group == "LIC" ~ adm_td_tot / pop_total_2021_lic * 100,
+    income_group == "HIC" ~ adm_td_tot / pop_total_2021_hic * 100,
+    income_group == "UMIC" ~ adm_td_tot / pop_total_2021_umic * 100,
+    income_group == "LMIC" ~ adm_td_tot / pop_total_2021_lmic * 100,
+    income_group == "LIC" ~ adm_td_tot / pop_total_2021_lic * 100,
     TRUE ~ NA
   ),
   category = "Income group") %>%
-  rename(dimension = a_income_group) %>%
+  rename(dimension = income_group) %>%
   ungroup()
 
-data_fig_3_admin_time_covax <- raw_data_acute_time %>%
-  select(a_iso,
+data_fig_3_admin_time_covax <- data_admin_time_interp %>%
+  select(iso,
          month_name,
-         a_status_covax,
-         adm_tot_td) %>%
-  filter(!is.na(a_status_covax),
-         a_status_covax != "No") %>%
-  group_by(month_name, a_status_covax) %>%
-  summarize(adm_td_tot = sum(adm_tot_td, na.rm = TRUE)) %>%
+         status_covax,
+         adm_tot_td_monotone_interp) %>%
+  filter(!is.na(status_covax)) %>%
+  group_by(month_name, status_covax) %>%
+  summarize(adm_td_tot = sum(adm_tot_td_monotone_interp, na.rm = TRUE)) %>%
   mutate(coverage = case_when(
-    a_status_covax == "AMC" ~ adm_td_tot / pop_total_2021_amc * 100,
-    a_status_covax == "Self-financing" ~ adm_td_tot / `pop_total_2021_self-financing` * 100,
-    a_status_covax == "Non-COVAX" ~ adm_td_tot / `pop_total_2021_non-covax` * 100,
+    status_covax == "AMC" ~ adm_td_tot / pop_total_2021_amc * 100,
+    status_covax == "Self-financing" ~ adm_td_tot / `pop_total_2021_self-financing` * 100,
+    status_covax == "Non-COVAX" ~ adm_td_tot / `pop_total_2021_non-covax` * 100,
     TRUE ~ NA
   ),
   category = "COVAX") %>%
-  rename(dimension = a_status_covax) %>%
+  rename(dimension = status_covax) %>%
   ungroup()
 
-data_fig_3_admin_time_all <- raw_data_acute_time %>%
-  select(a_iso,
+data_fig_3_admin_time_all <- data_admin_time_interp %>%
+  select(iso,
          month_name,
-         a_status_who,
-         a_region_who,
-         adm_tot_td) %>%
-  filter(a_status_who == "Member State") %>%
-  select(-a_status_who) %>%
-  group_by(month_name, a_region_who) %>%
-  summarize(adm_td_tot = sum(adm_tot_td, na.rm = TRUE)) %>%
+         status_who,
+         region_who,
+         adm_tot_td_monotone_interp) %>%
+  filter(status_who == "Member State") %>%
+  select(-status_who) %>%
+  group_by(month_name, region_who) %>%
+  summarize(adm_td_tot = sum(adm_tot_td_monotone_interp, na.rm = TRUE)) %>%
   mutate(coverage = case_when(
-    a_region_who == "AFR" ~ adm_td_tot / pop_total_2021_afr * 100,
-    a_region_who == "AMR" ~ adm_td_tot / pop_total_2021_amr * 100,
-    a_region_who == "EMR" ~ adm_td_tot / pop_total_2021_emr * 100,
-    a_region_who == "EUR" ~ adm_td_tot / pop_total_2021_eur * 100,
-    a_region_who == "SEAR" ~ adm_td_tot / pop_total_2021_sear * 100,
-    a_region_who == "WPR" ~ adm_td_tot / pop_total_2021_wpr * 100,
+    region_who == "AFR" ~ adm_td_tot / pop_total_2021_afr * 100,
+    region_who == "AMR" ~ adm_td_tot / pop_total_2021_amr * 100,
+    region_who == "EMR" ~ adm_td_tot / pop_total_2021_emr * 100,
+    region_who == "EUR" ~ adm_td_tot / pop_total_2021_eur * 100,
+    region_who == "SEAR" ~ adm_td_tot / pop_total_2021_sear * 100,
+    region_who == "WPR" ~ adm_td_tot / pop_total_2021_wpr * 100,
     TRUE ~ NA
   ),
   category = "Region") %>%
-  rename(dimension = a_region_who) %>%
+  rename(dimension = region_who) %>%
   ungroup() %>%
   rbind(., data_fig_3_admin_time_income, data_fig_3_admin_time_covax, 
         data_fig_3_admin_time_world) %>%
