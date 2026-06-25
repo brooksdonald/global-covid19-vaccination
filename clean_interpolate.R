@@ -3,14 +3,13 @@ interpolate_from_intro_wide_many <- function(df,
                                              date_col         = "month_name",
                                              iso_col          = "a_iso",
                                              intro_col        = "date_intro",
-                                             boost_col        = "date_boost",
+                                             boost_reference_var = NULL,
                                              cps_delay_months = 2,
                                              month_anchor_day = 15,
                                              suffix           = "_interp") {
   # Coerce key date columns once
   if (!inherits(df[[date_col]],  "Date"))  df[[date_col]]  <- as.Date(df[[date_col]])
   if (!inherits(df[[intro_col]], "Date"))  df[[intro_col]] <- as.Date(df[[intro_col]])
-  if (!inherits(df[[boost_col]], "Date"))  df[[boost_col]] <- as.Date(df[[boost_col]])
 
   if (length(month_anchor_day) != 1L ||
       is.na(month_anchor_day) ||
@@ -34,8 +33,17 @@ interpolate_from_intro_wide_many <- function(df,
   
   # Resolve vars to character vector
   var_names <- if (is.character(vars)) vars else names(dplyr::select(df, {{ vars }}))
-  missing_cols <- setdiff(c(iso_col, date_col, intro_col, boost_col, var_names), names(df))
+  missing_cols <- setdiff(
+    c(iso_col, date_col, intro_col, boost_reference_var, var_names),
+    names(df)
+  )
   if (length(missing_cols)) stop("Missing columns in `df`: ", paste(missing_cols, collapse = ", "))
+  if (!is.null(boost_reference_var) &&
+      (length(boost_reference_var) != 1L ||
+       is.na(boost_reference_var) ||
+       !boost_reference_var %in% var_names)) {
+    stop("`boost_reference_var` must identify one of the variables being interpolated.")
+  }
   
   df %>%
     group_by(.data[[iso_col]]) %>%
@@ -48,8 +56,22 @@ interpolate_from_intro_wide_many <- function(df,
         !is.na(start_intro),
         start_intro %m+% months(cps_delay_months),
         as.Date(NA)
-      ),
-      start_boost      = month_anchor(first(.data[[boost_col]]))
+      )
+    ) %>%
+    mutate(
+      # Use the first submitted total-population booster report as the common
+      # start proxy for interpolation of risk-group booster series.
+      start_boost = if (is.null(boost_reference_var)) {
+        as.Date(NA)
+      } else {
+        reference_values <- .data[[boost_reference_var]]
+        reference_idx <- which(!is.na(reference_values))
+        if (length(reference_idx)) {
+          interpolation_date[reference_idx[1]]
+        } else {
+          as.Date(NA)
+        }
+      }
     ) %>%
     mutate(
       across(
@@ -60,7 +82,11 @@ interpolate_from_intro_wide_many <- function(df,
           
           # Choose the start date vector for this variable
           start_vec <-
-            if (grepl("boost", var_name, ignore.case = TRUE)) {
+            if (!is.null(boost_reference_var) &&
+                identical(var_name, boost_reference_var)) {
+              # Preserve the observed total-population booster series.
+              as.Date(NA)
+            } else if (grepl("boost", var_name, ignore.case = TRUE)) {
               start_boost
             } else if (grepl("cps", var_name, ignore.case = TRUE)) {
               start_intro_cps

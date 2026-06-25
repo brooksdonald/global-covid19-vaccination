@@ -250,11 +250,6 @@ raw_adhoc <- data.frame(
 raw_population <- data.frame(
   read.csv(file.path(path_input, "data_export_WIISE_MT_REF_POPULATIONS.csv")))
 
-# Load 2021-2023 daily uptake data for daily vaccination rate analysis
-raw_data_acute_time_daily <- data.frame(
-  read_excel(file.path(path_input, "output_master_test.xlsx"),
-             sheet = "1_adm_all_long"))
-
 # Load 2024 policy data
 raw_policy_wide <- data.frame(
   read_excel(file.path(path_input, "output_new.xlsx"),

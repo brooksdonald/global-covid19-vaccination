@@ -839,33 +839,48 @@ data_fig_4_cov_time_world <- data_cov_time_world_full %>%
 
 # Figure 5
 
-min_n <- 10
+min_reporting_fraction <- 0.10
 
 data_fig_5_cov_time_mediqr_compA_fix <- cov_acute_summary %>%
   filter(type == "global",
          month_name < as.Date("2024-01-01")) %>%
+  group_by(type, dimension, group, indicator) %>%
   mutate(
-    med_cov = ifelse(n >= min_n, med_cov, NA_real_),
-    perc_25 = ifelse(n >= min_n, perc_25, NA_real_),
-    perc_75 = ifelse(n >= min_n, perc_75, NA_real_),
+    reporting_cohort_n = max(n, na.rm = TRUE),
+    reporting_threshold_n = ceiling(
+      min_reporting_fraction * reporting_cohort_n
+    ),
+    med_cov = ifelse(n >= reporting_threshold_n, med_cov, NA_real_),
+    perc_25 = ifelse(n >= reporting_threshold_n, perc_25, NA_real_),
+    perc_75 = ifelse(n >= reporting_threshold_n, perc_75, NA_real_),
     dimension = factor(dimension, levels = levels_income),
     indicator = factor(indicator, levels = c("cps","boost"),
                        labels = c("Complete primary series", 
                                   "At least one booster dose")),
     group = factor(group, levels = c("tot","old","hcw"),
                    labels = levels_groups_short)
-  )
+  ) %>%
+  ungroup()
 
 data_fig_5_cov_time_mediqr_compB <- cov_acute_summary %>%
   filter(type == "income", 
          group == "tot",
          month_name < as.Date("2024-01-01")) %>%
+  group_by(type, dimension, group, indicator) %>%
   mutate(
+    reporting_cohort_n = max(n, na.rm = TRUE),
+    reporting_threshold_n = ceiling(
+      min_reporting_fraction * reporting_cohort_n
+    ),
+    med_cov = ifelse(n >= reporting_threshold_n, med_cov, NA_real_),
+    perc_25 = ifelse(n >= reporting_threshold_n, perc_25, NA_real_),
+    perc_75 = ifelse(n >= reporting_threshold_n, perc_75, NA_real_),
     dimension = factor(dimension, levels = levels_income),
     indicator = factor(indicator, levels = c("cps","boost"),
                        labels = c("Complete primary series", 
                                   "At least one booster dose"))
-  )
+  ) %>%
+  ungroup()
 
 
 # Supp. figure 5

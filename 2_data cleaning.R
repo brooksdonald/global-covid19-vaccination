@@ -195,9 +195,7 @@ data_admin_time <- data_admin_time_staged %>%
     adm_old_a1d = pmin(adm_old_a1d_raw, pop_2021_old),
     adm_old_cps = pmin(adm_old_cps_raw, pop_2021_old),
     adm_old_boost = pmin(adm_old_boost_raw, pop_2021_old)
-  ) %>%
-  
-  mutate(date_boost = as.Date("2021-12-01"))
+  )
 
 # Apply documented manual time-series corrections before monotonicity cleaning.
 time_series_corrections <- data_corrections %>%
@@ -274,7 +272,9 @@ data_admin_time_mt <- clean_coverage_monotone_df(
        adm_hcw_boost_monotone) %>%
   ungroup()
 
-# Interpolate uptake between introduction date and first report
+# Interpolate uptake between introduction date and first report. For
+# risk-group booster series, use the country's first submitted
+# total-population booster report as the interpolation start proxy.
 source(file.path(path_project, "clean_interpolate.R"))
 
 data_admin_time_interp <- interpolate_from_intro_wide_many(
@@ -292,7 +292,7 @@ data_admin_time_interp <- interpolate_from_intro_wide_many(
   iso_col = "iso",
   date_col = "month_name",
   intro_col = "date_intro",
-  boost_col = "date_boost",
+  boost_reference_var = "adm_tot_boost_monotone",
   suffix = "_interp",
   cps_delay_months = 2,
   month_anchor_day = 15) %>%

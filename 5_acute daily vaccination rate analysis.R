@@ -1,3 +1,167 @@
+# Reconstruct daily vaccination rates -------------------------------------
+
+# The CVAP DVR pipeline produced this series in an intermediate workbook.
+# Reconstruct the manuscript input directly from the committed WHO weekly
+# cumulative uptake snapshot, using only the total-dose fields required here.
+
+prepare_dvr_reports <- function(raw_weekly,
+                                date_start = as.Date("2021-01-01"),
+                                date_end = as.Date("2023-12-31")) {
+  raw_weekly %>%
+    transmute(
+      iso = COUNTRY,
+      adm_date = as.Date(DATE),
+      adm_tot_td = as.numeric(DOSES_ADMINISTERED)
+    ) %>%
+    filter(
+      !is.na(iso),
+      iso != "None",
+      !is.na(adm_tot_td),
+      adm_tot_td >= 0
+    ) %>%
+    distinct() %>%
+    rename(date = adm_date) %>%
+    fix_admin_weekly_dates() %>%
+    rename(adm_date = date) %>%
+    filter(
+      !is.na(adm_date),
+      adm_date >= date_start,
+      adm_date <= date_end
+    ) %>%
+    group_by(iso, adm_date) %>%
+    # Retain the largest cumulative value if duplicate country-date records
+    # remain after exact duplicate removal.
+    summarise(adm_tot_td = max(adm_tot_td), .groups = "drop")
+}
+
+trailing_mean_partial <- function(x, width = 28L) {
+  x_zero <- ifelse(is.na(x), 0, x)
+  cumulative_sum <- cumsum(x_zero)
+  cumulative_n <- cumsum(!is.na(x))
+  numerator <- cumulative_sum - lag(cumulative_sum, width, default = 0)
+  denominator <- cumulative_n - lag(cumulative_n, width, default = 0)
+  ifelse(denominator > 0, numerator / denominator, NA_real_)
+}
+
+interpolate_dvr_daily <- function(df) {
+  df %>%
+    group_by(iso) %>%
+    arrange(adm_date, .by_group = TRUE) %>%
+    group_modify(~{
+      first_report_date <- min(.x$adm_date)
+      last_report_date <- max(.x$adm_date)
+      reported_intro_date <- as.Date(first(.x$date_intro))
+
+      # CVAP used the programme introduction date as a zero anchor. Where it
+      # was unavailable or did not precede the first report, use the preceding
+      # day so the first cumulative report is retained without extrapolating
+      # backwards from an invalid interval.
+      interpolation_start <- if (
+        is.na(reported_intro_date) ||
+        reported_intro_date >= first_report_date
+      ) {
+        first_report_date - 1
+      } else {
+        reported_intro_date
+      }
+
+      daily <- tibble(
+        adm_date = seq.Date(
+          interpolation_start,
+          last_report_date,
+          by = "day"
+        )
+      ) %>%
+        left_join(
+          .x %>% select(adm_date, adm_tot_td_monotone),
+          by = "adm_date"
+        )
+
+      daily$adm_tot_td_monotone[
+        daily$adm_date == interpolation_start &
+          is.na(daily$adm_tot_td_monotone)
+      ] <- 0
+
+      reported_idx <- which(!is.na(daily$adm_tot_td_monotone))
+      daily$adm_tot_td_daily <- if (length(reported_idx) >= 2L) {
+        approx(
+          x = reported_idx,
+          y = daily$adm_tot_td_monotone[reported_idx],
+          xout = seq_len(nrow(daily)),
+          method = "linear",
+          rule = 2
+        )$y
+      } else {
+        daily$adm_tot_td_monotone
+      }
+
+      daily %>%
+        mutate(
+          daily_doses = adm_tot_td_daily - lag(
+            adm_tot_td_daily,
+            default = first(adm_tot_td_daily)
+          ),
+          dvr_4wk_td = trailing_mean_partial(daily_doses, width = 28L),
+          date_intro_dvr = interpolation_start,
+          date_first_report_dvr = first_report_date,
+          date_last_report_dvr = last_report_date
+        )
+    }) %>%
+    ungroup()
+}
+
+dvr_reports <- prepare_dvr_reports(base_total)
+
+source(file.path(path_project, "clean_monotone.R"))
+
+dvr_reports_clean <- clean_coverage_monotone_df(
+  dvr_reports,
+  id_iso = "iso",
+  id_time = "adm_date",
+  vars_to_clean = "adm_tot_td",
+  depth = 3,
+  batch = TRUE,
+  method = "interpolate",
+  round_int = TRUE
+)
+
+dvr_monotone_log <- attr(dvr_reports_clean, "monotone_log")
+
+dvr_reports_clean <- dvr_reports_clean %>%
+  left_join(
+    entity_pop %>% select(iso, date_intro),
+    by = "iso"
+  )
+
+dvr_intro_fallback_log <- dvr_reports_clean %>%
+  group_by(iso) %>%
+  summarise(
+    date_intro = first(date_intro),
+    date_first_report = min(adm_date),
+    .groups = "drop"
+  ) %>%
+  filter(is.na(date_intro) | date_intro >= date_first_report) %>%
+  mutate(
+    date_intro_used = date_first_report - 1,
+    reason = if_else(
+      is.na(date_intro),
+      "programme introduction date unavailable",
+      "programme introduction date did not precede first report"
+    )
+  )
+
+raw_data_acute_time_daily <- dvr_reports_clean %>%
+  interpolate_dvr_daily() %>%
+  filter(
+    adm_date >= as.Date("2021-01-01"),
+    adm_date <= as.Date("2023-12-31")
+  ) %>%
+  transmute(
+    a_iso = iso,
+    adm_date,
+    dvr_4wk_td
+  )
+
 
 # Staging -----------------------------------------------------------------
 

@@ -40,8 +40,8 @@ Local input files:
 - `input/data_export_WIISE_REF_COUNTRIES.csv`: WHO reference country/entity metadata.
 - `input/data_export_WIISE_MT_REF_POPULATIONS.csv`: Population estimates by country, year, and age group.
 - `input/base_adhoc.xlsx`: Manually curated country-level fields, including older adult policy age thresholds, introduction dates, and health and care worker denominator information.
-- `input/output_master_test.xlsx`: 2021-2023 workbook retained for daily vaccination rate analyses during API-native porting.
-- `input/output_new.xlsx`: 2024 policy and uptake data used for routine-period analyses.
+- `input/output_master_test.xlsx`: Archival 2021–2023 workbook retained for validation but not read by the analysis.
+- `input/output_new.xlsx`: 2024 policy data used for routine-period analyses.
 - `input/output_master.xlsx`: Earlier/archival workbook retained in the repository but not currently read by `0_master.R`.
 - `input/2026-06-12_MT_COV_UPTAKE_TARGETGROUP_LONG.json`: Cached WHO API extract for target-group uptake data.
 - `input/2026-06-12_COV_UPTAKE_WEEKLY.json`: Cached WHO API extract for weekly total-population uptake data.
