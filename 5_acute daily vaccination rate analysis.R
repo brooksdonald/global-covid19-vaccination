@@ -14,63 +14,6 @@ data_admin_daily <- raw_data_acute_time_daily %>%
   mutate(dvr_4wk_td_per = dvr_4wk_td / pop_2021)
 
 
-# Calculate simple average dvr per country grouping -----------------------
-
-# Simple averages summarize country-level DVR percentages with equal country weight
-
-# All
-dvr_simple_all <- data_admin_daily %>%
-  filter(status_who == "Member State",
-         adm_date <= as.Date("2023-12-31")) %>%
-  group_by(adm_date) %>%
-  summarize(dvr_per_mean = mean(dvr_4wk_td_per, na.rm = TRUE),
-            dvr_per_median = median(dvr_4wk_td_per, na.rm = TRUE)) %>%
-  ungroup() %>% 
-  mutate(type = "Global",
-         dimension = NA)
-
-# Income group
-dvr_simple_income <- data_admin_daily %>%
-  filter(status_who == "Member State",
-         !is.na(income_group),
-         income_group != "",
-         adm_date <= as.Date("2023-12-31")) %>%
-  group_by(adm_date, income_group) %>%
-  summarize(dvr_per_mean = mean(dvr_4wk_td_per, na.rm = TRUE),
-            dvr_per_median = median(dvr_4wk_td_per, na.rm = TRUE)) %>%
-  ungroup() %>%
-  rename(dimension = income_group) %>%
-  mutate(type = "Income group")
-
-# Region
-dvr_simple_region <- data_admin_daily %>%
-  filter(status_who == "Member State",
-         adm_date <= as.Date("2023-12-31")) %>%
-  group_by(adm_date, region_who) %>%
-  summarize(dvr_per_mean = mean(dvr_4wk_td_per, na.rm = TRUE),
-            dvr_per_median = median(dvr_4wk_td_per, na.rm = TRUE)) %>%
-  ungroup() %>% 
-  rename(dimension = region_who) %>%
-  mutate(type = "WHO region")
-
-# COVAX 
-dvr_simple_covax <- data_admin_daily %>%
-  filter(!is.na(status_covax),
-         adm_date <= as.Date("2023-12-31")) %>%
-  group_by(adm_date, status_covax) %>%
-  summarize(dvr_per_mean = mean(dvr_4wk_td_per, na.rm = TRUE),
-            dvr_per_median = median(dvr_4wk_td_per, na.rm = TRUE)) %>%
-  ungroup() %>% 
-  rename(dimension = status_covax) %>%
-  mutate(type = "COVAX participation category")
-
-# Combine
-dvr_simple <- rbind(dvr_simple_all,
-                    dvr_simple_income, 
-                    dvr_simple_region,
-                    dvr_simple_covax)
-
-
 # Calculate weighted average of dvr per country grouping ------------------
 
 # Weighted figures aggregate doses first, then divide by reporting population
@@ -144,143 +87,66 @@ dvr_max <- dvr_weighted %>%
          -dvr)
 
 
-# Calculate dvr summary statistics by country grouping --------------------
+# Calculate cross-country percentile ranges -------------------------------
 
-# Global
+# The central lines use the population-weighted aggregate rates calculated
+# above. These unweighted percentiles describe variation between countries.
 dvr_summary_all <- data_admin_daily %>%
   filter(status_who == "Member State") %>%
-  select(iso,
-         adm_date,
-         dvr_4wk_td,
-         dvr_4wk_td_per) %>%
   group_by(adm_date) %>%
   summarise(
-    max_rate = max(dvr_4wk_td_per, na.rm = TRUE),
-    min_rate = min(dvr_4wk_td_per, na.rm = TRUE), 
-    avg_rate = mean(dvr_4wk_td_per, na.rm = TRUE),
-    med_rate = median(dvr_4wk_td_per, na.rm = TRUE), 
-    sd_rate = sd(dvr_4wk_td_per, na.rm = TRUE),
     perc_10 = quantile(dvr_4wk_td_per, 0.10, na.rm = TRUE),
     perc_90 = quantile(dvr_4wk_td_per, 0.90, na.rm = TRUE),
-    perc_25 = quantile(dvr_4wk_td_per, 0.25, na.rm = TRUE),
-    perc_75 = quantile(dvr_4wk_td_per, 0.75, na.rm = TRUE)
+    .groups = "drop"
   ) %>%
   mutate(
-    lower_bound = avg_rate - sd_rate,
-    upper_bound = avg_rate + sd_rate,
-    type = "global",
-    dimension = NA
-  ) %>%
-ungroup()
+    type = "All",
+    dimension = "Global"
+  )
 
-# Income group
 dvr_summary_income <- data_admin_daily %>%
-  filter(status_who == "Member State",
-         !is.na(income_group),
-         income_group != "") %>%
-  select(iso,
-         adm_date,
-         income_group,
-         dvr_4wk_td,
-         dvr_4wk_td_per) %>%
+  filter(
+    status_who == "Member State",
+    !is.na(income_group),
+    income_group != ""
+  ) %>%
   group_by(adm_date, income_group) %>%
   summarise(
-    max_rate = max(dvr_4wk_td_per, na.rm = TRUE),
-    min_rate = min(dvr_4wk_td_per, na.rm = TRUE), 
-    avg_rate = mean(dvr_4wk_td_per, na.rm = TRUE),
-    med_rate = median(dvr_4wk_td_per, na.rm = TRUE), 
-    sd_rate = sd(dvr_4wk_td_per, na.rm = TRUE),
     perc_10 = quantile(dvr_4wk_td_per, 0.10, na.rm = TRUE),
     perc_90 = quantile(dvr_4wk_td_per, 0.90, na.rm = TRUE),
-    perc_25 = quantile(dvr_4wk_td_per, 0.25, na.rm = TRUE),
-    perc_75 = quantile(dvr_4wk_td_per, 0.75, na.rm = TRUE)
-  ) %>%
-  mutate(
-    lower_bound = avg_rate - sd_rate,
-    upper_bound = avg_rate + sd_rate,
-    type = "income"
+    .groups = "drop"
   ) %>%
   rename(dimension = income_group) %>%
-  ungroup()
+  mutate(type = "Income group")
 
-# WHO region
-dvr_summary_region <- data_admin_daily %>%
-    filter(status_who == "Member State") %>%
-    select(iso,
-           adm_date,
-           region_who,
-           dvr_4wk_td,
-           dvr_4wk_td_per) %>%
-    group_by(adm_date, region_who) %>%
-    summarise(
-      max_rate = max(dvr_4wk_td_per, na.rm = TRUE),
-      min_rate = min(dvr_4wk_td_per, na.rm = TRUE), 
-      avg_rate = mean(dvr_4wk_td_per, na.rm = TRUE),
-      med_rate = median(dvr_4wk_td_per, na.rm = TRUE), 
-      sd_rate = sd(dvr_4wk_td_per, na.rm = TRUE),
-      perc_10 = quantile(dvr_4wk_td_per, 0.10, na.rm = TRUE),
-      perc_90 = quantile(dvr_4wk_td_per, 0.90, na.rm = TRUE),
-      perc_25 = quantile(dvr_4wk_td_per, 0.25, na.rm = TRUE),
-      perc_75 = quantile(dvr_4wk_td_per, 0.75, na.rm = TRUE)
-    ) %>%
-    mutate(
-      lower_bound = avg_rate - sd_rate,
-      upper_bound = avg_rate + sd_rate,
-      type = "region"
-    ) %>%
-    rename(dimension = region_who) %>%
-  ungroup()
-  
-# COVAX participation category
-dvr_summary_covax <- data_admin_daily %>%
-  filter(!is.na(status_covax)) %>%
-  select(iso,
-          adm_date,
-          status_covax,
-           dvr_4wk_td,
-           dvr_4wk_td_per) %>%
-    group_by(adm_date, status_covax) %>%
-    summarise(
-      max_rate = max(dvr_4wk_td_per, na.rm = TRUE),
-      min_rate = min(dvr_4wk_td_per, na.rm = TRUE), 
-      avg_rate = mean(dvr_4wk_td_per, na.rm = TRUE),
-      med_rate = median(dvr_4wk_td_per, na.rm = TRUE), 
-      sd_rate = sd(dvr_4wk_td_per, na.rm = TRUE),
-      perc_10 = quantile(dvr_4wk_td_per, 0.10, na.rm = TRUE),
-      perc_90 = quantile(dvr_4wk_td_per, 0.90, na.rm = TRUE),
-      perc_25 = quantile(dvr_4wk_td_per, 0.25, na.rm = TRUE),
-      perc_75 = quantile(dvr_4wk_td_per, 0.75, na.rm = TRUE)
-    ) %>%
-    mutate(
-      lower_bound = avg_rate - sd_rate,
-      upper_bound = avg_rate + sd_rate,
-      type = "COVAX participation category"
-    ) %>%
-    rename(dimension = status_covax) %>%
-  ungroup()
-  
-# Combine
-dvr_summary <- rbind(dvr_summary_all,
-                     dvr_summary_income,
-                     dvr_summary_region,
-                     dvr_summary_covax)
+dvr_summary <- bind_rows(
+  dvr_summary_all,
+  dvr_summary_income
+) %>%
+  left_join(
+    dvr_weighted %>%
+      select(
+        adm_date,
+        type,
+        dimension,
+        aggregate_rate = dvr_per
+      ),
+    by = c("adm_date", "type", "dimension")
+  )
 
 
 # Prepare visualizations ---------------------------------------------------
 
 # Figure 6
 data_fig_5_dvr_summary_compA <- dvr_summary %>%
-  select(-max_rate, -min_rate, -perc_25, -perc_75) %>%
   filter(
-    type == "global",
+    type == "All",
     adm_date < as.Date("2024-01-01")
   ) %>%
-  mutate(dimension = "Global", dimension = factor(dimension, levels = "Global")
-  )
+  mutate(dimension = factor(dimension, levels = "Global"))
 
 data_fig_5_dvr_summary_compB <- dvr_summary %>%
-select(-max_rate, -min_rate, -perc_25, -perc_75) %>%
-  filter(type == "income",
+  filter(type == "Income group",
          !is.na(dimension),
          dimension != "",
          adm_date < as.Date("2024-01-01")) %>%

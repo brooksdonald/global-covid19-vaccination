@@ -1,0 +1,32 @@
+correction_id,analysis,action,iso,group,indicator,period,source,dataset,match_value,replacement_value,reporting_basis,reason
+EX001,routine_2024,exclude_record,UKR,*,*,end_2024,EJRF,annual,,,,Legacy framework exclusion; reporting-quality rationale was not documented in framework_new.R and should be confirmed.
+EX002,routine_2024,exclude_record,PNG,*,*,end_2024,EJRF,annual,,,,Legacy framework exclusion; reporting-quality rationale was not documented in framework_new.R and should be confirmed.
+EX003,routine_2024,exclude_record,GHA,*,*,end_2024,EJRF,annual,,,,Legacy framework exclusion; reporting-quality rationale was not documented in framework_new.R and should be confirmed.
+EX004,routine_2024,exclude_record,COG,*,*,end_2024,EJRF,annual,,,,Legacy framework exclusion; reporting-quality rationale was not documented in framework_new.R and should be confirmed.
+EX005,routine_2024,exclude_record,LAO,*,*,end_2024,EJRF,annual,,,,Legacy framework exclusion; reporting-quality rationale was not documented in framework_new.R and should be confirmed.
+EX006,routine_2024,exclude_record,SGP,*,*,end_2024,EJRF,annual,,,,Legacy framework exclusion; reporting-quality rationale was not documented in framework_new.R and should be confirmed.
+EX007,routine_2024,exclude_record,MDA,*,*,*,EJRF,*,,,,TESSY series selected over EJRF in the legacy framework.
+EX008,routine_2024,exclude_record,LVA,*,*,*,EJRF,*,,,,TESSY series selected over EJRF in the legacy framework.
+EX009,routine_2024,exclude_record,PRT,*,*,*,EJRF,*,,,,TESSY series selected over EJRF in the legacy framework.
+EX010,routine_2024,exclude_record,UKR,*,*,*,EJRF,*,,,,TESSY series selected over EJRF in the legacy framework.
+EX011,routine_2024,exclude_record,DNK,older,*,end_2024,TESSY,quarterly,1569052,,,Legacy invalid aggregate; this value is no longer generated after restricting the fallback sum to older-age bands.
+EX012,routine_2024,exclude_record,ISL,older,*,end_2024,TESSY,quarterly,1613,,,Legacy invalid aggregate; this value is no longer generated after restricting the fallback sum to older-age bands.
+EX013,routine_2024,exclude_record,NLD,older,*,end_2024,EJRF,annual,2342939,,,Specific annual value excluded in favour of the TESSY report in the legacy framework.
+EX014,routine_2024,exclude_record,TLS,*,*,*,*,*,,,,Older-adult and HCW values were excluded as invalid in the legacy framework.
+EX015,routine_2024,exclude_record,USA,*,*,*,*,*,,,,United States records were outside the analysis scope in the legacy framework.
+RP001,routine_2024,add_or_replace,MDA,older,*,q1,TESSY,quarterly,,488,,Manual value used in the legacy framework.
+RP002,routine_2024,add_or_replace,MDA,hcw,*,q1,TESSY,quarterly,,179,,Manual value used in the legacy framework.
+RP003,routine_2024,add_or_replace,LVA,older,*,q2,TESSY,quarterly,,31,,Manual value used in the legacy framework.
+RP004,routine_2024,add_or_replace,LVA,hcw,*,q2,TESSY,quarterly,,3,,Manual value used in the legacy framework.
+RB001,routine_2024,set_reporting_basis,AND,older,*,q3,*,quarterly,,,additive,Quarter-specific report; add to the previously reconstructed cumulative value.
+RB002,routine_2024,set_reporting_basis,CRI,older,*,q2,*,quarterly,,,additive,Quarter-specific report; add to the Q1 value.
+RB003,routine_2024,set_reporting_basis,CRI,older,*,q3,*,quarterly,,,cumulative,Cumulative report superseding the reconstructed Q2 value.
+RB004,routine_2024,set_reporting_basis,OMN,older,*,q3,*,quarterly,,,additive,Quarter-specific report; add to the latest prior value.
+RB005,routine_2024,set_reporting_basis,AND,hcw,*,q3,*,quarterly,,,additive,Quarter-specific report; add to the previously reconstructed cumulative value.
+RB006,routine_2024,set_reporting_basis,OMN,hcw,*,q3,*,quarterly,,,additive,Quarter-specific report; add to the latest prior value.
+TS001,acute_2021_2023,set_missing,CHN,older,adm_old_boost,2022-05-01,WHO_API,target_group_monthly,0,,,Zero is treated as a non-reporting placeholder: the cumulative series was previously missing and subsequently rose to 181975200 in November 2022.
+TS002,acute_2021_2023,set_missing,CHN,older,adm_old_boost,2022-06-01,WHO_API,target_group_monthly,0,,,Zero is treated as a non-reporting placeholder: the cumulative series was previously missing and subsequently rose to 181975200 in November 2022.
+TS003,acute_2021_2023,set_missing,CHN,older,adm_old_boost,2022-07-01,WHO_API,target_group_monthly,0,,,Zero is treated as a non-reporting placeholder: the cumulative series was previously missing and subsequently rose to 181975200 in November 2022.
+TS004,acute_2021_2023,set_missing,CHN,older,adm_old_boost,2022-08-01,WHO_API,target_group_monthly,0,,,Zero is treated as a non-reporting placeholder: the cumulative series was previously missing and subsequently rose to 181975200 in November 2022.
+TS005,acute_2021_2023,set_missing,CHN,older,adm_old_boost,2022-09-01,WHO_API,target_group_monthly,0,,,Zero is treated as a non-reporting placeholder: the cumulative series was previously missing and subsequently rose to 181975200 in November 2022.
+TS006,acute_2021_2023,set_missing,CHN,older,adm_old_boost,2022-10-01,WHO_API,target_group_monthly,0,,,Zero is treated as a non-reporting placeholder: the cumulative series was previously missing and subsequently rose to 181975200 in November 2022.

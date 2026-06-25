@@ -197,14 +197,45 @@ data_admin_time <- data_admin_time_staged %>%
     adm_old_boost = pmin(adm_old_boost_raw, pop_2021_old)
   ) %>%
   
-  # Remove non-report 0s
-  mutate(date_boost = as.Date("2021-12-01"),
-         adm_old_boost = case_when(
-           iso == "CHN" & as.Date(month_name) %in% 
-             seq(as.Date("2022-05-01"), as.Date("2022-10-01"), 
-                 by = "1 month") ~ NA,
-           TRUE ~ adm_old_boost
-         ))
+  mutate(date_boost = as.Date("2021-12-01"))
+
+# Apply documented manual time-series corrections before monotonicity cleaning.
+time_series_corrections <- data_corrections %>%
+  filter(
+    analysis == "acute_2021_2023",
+    action == "set_missing"
+  ) %>%
+  transmute(
+    correction_id,
+    iso,
+    month_name = as.Date(period),
+    indicator,
+    match_value = as.numeric(match_value)
+  )
+
+stopifnot(
+  all(time_series_corrections$indicator %in% names(data_admin_time)),
+  !anyDuplicated(
+    time_series_corrections[c("iso", "month_name", "indicator")]
+  )
+)
+
+for (i in seq_len(nrow(time_series_corrections))) {
+  rule <- time_series_corrections[i, , drop = FALSE]
+  matched <- data_admin_time$iso == rule$iso &
+    data_admin_time$month_name == rule$month_name
+
+  stopifnot(sum(matched) == 1L)
+
+  observed <- data_admin_time[[rule$indicator]][matched]
+  stopifnot(
+    length(observed) == 1L,
+    !is.na(observed),
+    abs(observed - rule$match_value) < 0.5
+  )
+
+  data_admin_time[[rule$indicator]][matched] <- NA_real_
+}
   
 
 # Clean timeseries data ---------------------------------------------------
@@ -243,12 +274,16 @@ data_admin_time_mt <- clean_coverage_monotone_df(
        adm_hcw_boost_monotone) %>%
   ungroup()
 
-# Interpolate target-group uptake between introduction date and first report
+# Interpolate uptake between introduction date and first report
 source(file.path(path_project, "clean_interpolate.R"))
 
 data_admin_time_interp <- interpolate_from_intro_wide_many(
   df = data_admin_time_mt,
-  vars = c("adm_old_a1d_monotone",
+  vars = c("adm_tot_td_monotone",
+           "adm_tot_a1d_monotone",
+           "adm_tot_cps_monotone",
+           "adm_tot_boost_monotone",
+           "adm_old_a1d_monotone",
            "adm_old_cps_monotone",
            "adm_old_boost_monotone",
            "adm_hcw_a1d_monotone",
@@ -259,26 +294,23 @@ data_admin_time_interp <- interpolate_from_intro_wide_many(
   intro_col = "date_intro",
   boost_col = "date_boost",
   suffix = "_interp",
-  cps_delay_months = 2) %>%
+  cps_delay_months = 2,
+  month_anchor_day = 15) %>%
   group_by(iso) %>%
   arrange(month_name) %>%
   fill(
-    adm_tot_td_monotone,
-    adm_tot_a1d_monotone,
-    adm_tot_cps_monotone,
-    adm_tot_boost_monotone
+    adm_tot_td_monotone_interp,
+    adm_tot_a1d_monotone_interp,
+    adm_tot_cps_monotone_interp,
+    adm_tot_boost_monotone_interp
   ) %>%
   ungroup() %>%
   
   # Cap cleaned figures at population max after interpolation
   mutate(
-    adm_tot_a1d_monotone = pmin(adm_tot_a1d_monotone, pop_2021),
-    adm_tot_cps_monotone = pmin(adm_tot_cps_monotone, pop_2021),
-    adm_tot_boost_monotone = pmin(adm_tot_boost_monotone, pop_2021),
-    adm_tot_td_monotone_interp = adm_tot_td_monotone,
-    adm_tot_a1d_monotone_interp = adm_tot_a1d_monotone,
-    adm_tot_cps_monotone_interp = adm_tot_cps_monotone,
-    adm_tot_boost_monotone_interp = adm_tot_boost_monotone,
+    adm_tot_a1d_monotone_interp = pmin(adm_tot_a1d_monotone_interp, pop_2021),
+    adm_tot_cps_monotone_interp = pmin(adm_tot_cps_monotone_interp, pop_2021),
+    adm_tot_boost_monotone_interp = pmin(adm_tot_boost_monotone_interp, pop_2021),
     adm_old_a1d_monotone_interp = pmin(adm_old_a1d_monotone_interp, 
                                            pop_2021_old),
     adm_old_cps_monotone_interp = pmin(adm_old_cps_monotone_interp, 

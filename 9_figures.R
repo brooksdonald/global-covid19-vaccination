@@ -7,8 +7,7 @@ fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>%
   facet_grid(group ~ measure, scales = "fixed", space = "free") +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
   scale_fill_manual(values = pal_income) +
-  labs(title = "Vaccination coverage, end-2023",
-       x = label_axis_income,
+  labs(x = label_axis_income,
        y = label_axis_coverage) + 
   theme_master +
   theme(legend.position = "none")
@@ -77,7 +76,10 @@ export_figure(
 
 # Figure 3 - administration over time, line, all, by reg, ig, covax -------
 
-data_fig_3_admin_time_labels <- data_fig_3_admin_time_all %>%
+data_fig_3_admin_time_plot <- data_fig_3_admin_time_all %>%
+  filter(!is.na(dimension), !is.na(coverage))
+
+data_fig_3_admin_time_labels <- data_fig_3_admin_time_plot %>%
   arrange(category, dimension, month_name) %>%
   group_by(category, dimension) %>%
   slice_tail(n = 1) %>%
@@ -93,73 +95,85 @@ theme_fig3 <- theme_master +
   )
 
 # Create component 1 - by WHO region
-fig_3_comp_region <- data_fig_3_admin_time_all %>%
+fig_3_comp_region <- data_fig_3_admin_time_plot %>%
   filter(category == "Region") %>%
   ggplot(aes(month_name, coverage, color = dimension)) +
   geom_line(linewidth = 1.2) +
-  geom_text_repel(
+  geom_label_repel(
     data = data_fig_3_admin_time_labels %>% filter(category == "Region"),
     aes(label = dimension),
-    size = 3,
+    size = 3.5, label.size = 0.5,
+    label.r = unit(0.25, "lines"),
+    fill = "white",
+    box.padding = 0.5, point.padding = 0.5,
     direction = "y",
     hjust = 0,
-    nudge_x = 35,
-    segment.color = "grey70",
-    segment.size = 0.25,
+    nudge_x = 8,
+    nudge_y = 0,
+    segment.color = "grey60", segment.size = 0.3,
     min.segment.length = 0,
+    max.overlaps = Inf,
     show.legend = FALSE
   ) +
   coord_cartesian(ylim = c(0, 235), clip = "off") +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y",
-               expand = expansion(mult = c(0.02, 0.22))) +
+               expand = expansion(mult = c(0.02, 0.03))) +
   scale_color_manual(values = pal_region_world) +
   labs(title = "WHO region", x = NULL, y = NULL, color = NULL) +
   theme_fig3
 
 # Create component 2 - by income group
-fig_3_comp_income <- data_fig_3_admin_time_all %>%
+fig_3_comp_income <- data_fig_3_admin_time_plot %>%
   filter(category == "Income group") %>%
   ggplot(aes(month_name, coverage, color = dimension)) +
   geom_line(linewidth = 1.2) +
-  geom_text_repel(
+  geom_label_repel(
     data = data_fig_3_admin_time_labels %>% filter(category == "Income group"),
     aes(label = dimension),
-    size = 3,
+    size = 3.5, label.size = 0.5,
+    label.r = unit(0.25, "lines"),
+    fill = "white",
+    box.padding = 0.5, point.padding = 0.5,
     direction = "y",
     hjust = 0,
-    nudge_x = 35,
-    segment.color = "grey70",
-    segment.size = 0.25,
+    nudge_x = 8,
+    nudge_y = 0,
+    segment.color = "grey60", segment.size = 0.3,
     min.segment.length = 0,
+    max.overlaps = Inf,
     show.legend = FALSE
   ) +
   coord_cartesian(ylim = c(0, 235), clip = "off") +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y",
-               expand = expansion(mult = c(0.02, 0.22))) +
+               expand = expansion(mult = c(0.02, 0.03))) +
   scale_color_manual(values = pal_income_world) +
   labs(title = "Income group", x = NULL, y = label_axis_admin_per100, color = NULL) +
   theme_fig3
 
 # Create component 3 - by COVAX participation category
-fig_3_comp_covax <- data_fig_3_admin_time_all %>%
+fig_3_comp_covax <- data_fig_3_admin_time_plot %>%
   filter(category == "COVAX") %>%
   ggplot(aes(month_name, coverage, color = dimension)) +
   geom_line(linewidth = 1.2) +
-  geom_text_repel(
+  geom_label_repel(
     data = data_fig_3_admin_time_labels %>% filter(category == "COVAX"),
     aes(label = dimension),
-    size = 3,
+    size = 3.5, label.size = 0.5,
+    label.r = unit(0.25, "lines"),
+    fill = "white",
+    box.padding = 0.5, point.padding = 0.5,
     direction = "y",
     hjust = 0,
-    nudge_x = 35,
-    segment.color = "grey70",
-    segment.size = 0.25,
+    nudge_x = 8,
+    nudge_y = 0,
+    segment.color = "grey60", segment.size = 0.3,
     min.segment.length = 0,
+    max.overlaps = Inf,
     show.legend = FALSE
   ) +
   coord_cartesian(ylim = c(0, 235), clip = "off") +
   scale_x_date(date_breaks = "1 year", date_labels = "%Y",
-               expand = expansion(mult = c(0.02, 0.22))) +
+               expand = expansion(mult = c(0.02, 0.03))) +
   scale_color_manual(values = pal_covax) +
   labs(title = "COVAX participation", x = NULL, y = NULL, color = NULL) +
   theme_fig3
@@ -285,7 +299,7 @@ export_figure(
 
 # Create panel a - global
 fig_6_dvr_summary_compA <- data_fig_5_dvr_summary_compA %>%
-  ggplot(aes(x = adm_date, y = avg_rate)) +
+  ggplot(aes(x = adm_date, y = aggregate_rate)) +
   geom_ribbon(aes(ymin = perc_10, ymax = perc_90), alpha = 0.2, color = "black") +
   geom_line(size = 1.2) +
   scale_y_continuous(labels = percent_format(),
@@ -305,9 +319,9 @@ fig_6_dvr_summary_compA <- data_fig_5_dvr_summary_compA %>%
 
 # Create panel b - by income group
 fig_6_dvr_summary_compB <- data_fig_5_dvr_summary_compB %>%
-  ggplot(aes(x = adm_date, y = avg_rate, color = dimension)) +
+  ggplot(aes(x = adm_date, y = aggregate_rate, color = dimension)) +
   geom_ribbon(aes(ymin = perc_10, ymax = perc_90, fill = dimension), alpha = 0.2) +
-  geom_line(size = 1.2) +  # Line for the average rate
+  geom_line(size = 1.2) +
   facet_wrap(~ dimension) +
   scale_y_continuous(labels = scales::percent_format(),
                      limits = c(0, 0.012),

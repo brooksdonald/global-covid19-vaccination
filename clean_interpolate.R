@@ -5,11 +5,32 @@ interpolate_from_intro_wide_many <- function(df,
                                              intro_col        = "date_intro",
                                              boost_col        = "date_boost",
                                              cps_delay_months = 2,
+                                             month_anchor_day = 15,
                                              suffix           = "_interp") {
   # Coerce key date columns once
   if (!inherits(df[[date_col]],  "Date"))  df[[date_col]]  <- as.Date(df[[date_col]])
   if (!inherits(df[[intro_col]], "Date"))  df[[intro_col]] <- as.Date(df[[intro_col]])
   if (!inherits(df[[boost_col]], "Date"))  df[[boost_col]] <- as.Date(df[[boost_col]])
+
+  if (length(month_anchor_day) != 1L ||
+      is.na(month_anchor_day) ||
+      month_anchor_day < 1L ||
+      month_anchor_day > 28L) {
+    stop("`month_anchor_day` must be a single integer between 1 and 28.")
+  }
+  month_anchor_day <- as.integer(month_anchor_day)
+
+  month_anchor <- function(x) {
+    x <- as.Date(x)
+    out <- as.Date(rep(NA_character_, length(x)))
+    keep <- !is.na(x)
+    out[keep] <- as.Date(sprintf(
+      "%s-%02d",
+      format(x[keep], "%Y-%m"),
+      month_anchor_day
+    ))
+    out
+  }
   
   # Resolve vars to character vector
   var_names <- if (is.character(vars)) vars else names(dplyr::select(df, {{ vars }}))
@@ -20,12 +41,15 @@ interpolate_from_intro_wide_many <- function(df,
     group_by(.data[[iso_col]]) %>%
     arrange(.data[[date_col]], .by_group = TRUE) %>%
     mutate(
-      # Precompute per-ISO start dates (vectors available in the data mask)
-      start_intro      = first(.data[[intro_col]]),
-      start_intro_cps  = ifelse(!is.na(start_intro),
-                                as.Date(start_intro %m+% months(cps_delay_months)),
-                                as.Date(NA)),
-      start_boost      = first(.data[[boost_col]])
+      # Use a common within-month anchor for reported and introduction dates.
+      interpolation_date = month_anchor(.data[[date_col]]),
+      start_intro      = month_anchor(first(.data[[intro_col]])),
+      start_intro_cps  = if_else(
+        !is.na(start_intro),
+        start_intro %m+% months(cps_delay_months),
+        as.Date(NA)
+      ),
+      start_boost      = month_anchor(first(.data[[boost_col]]))
     ) %>%
     mutate(
       across(
@@ -50,11 +74,15 @@ interpolate_from_intro_wide_many <- function(df,
           idxs       <- which(!is.na(v))
           first_idx  <- if (length(idxs)) idxs[1] else NA_integer_
           first_val  <- if (is.na(first_idx)) NA_real_ else v[first_idx]
-          first_date <- if (is.na(first_idx)) as.Date(NA) else .data[[date_col]][first_idx]
+          first_date <- if (is.na(first_idx)) {
+            as.Date(NA)
+          } else {
+            interpolation_date[first_idx]
+          }
           
           # Linear ramp weights from start_vec -> first_date
           den <- as.numeric(as.Date(first_date) - as.Date(start_vec))
-          num <- as.numeric(as.Date(.data[[date_col]]) - as.Date(start_vec))
+          num <- as.numeric(as.Date(interpolation_date) - as.Date(start_vec))
           w   <- ifelse(!is.na(den) & den > 0, pmax(0, pmin(1, num/den)), NA_real_)
           
           # Interpolate from 0 at start_vec up to first_val at first_date
@@ -63,15 +91,16 @@ interpolate_from_intro_wide_many <- function(df,
           # Use ramp only within [start_vec, first_date]; elsewhere keep original
           case_when(
             is.na(start_vec) | is.na(first_date) ~ v,
-            .data[[date_col]] <  start_vec       ~ v,
-            .data[[date_col]] >  first_date      ~ v,
-            TRUE                                  ~ ramp
+            first_date <= start_vec              ~ v,
+            interpolation_date < start_vec       ~ v,
+            interpolation_date > first_date      ~ v,
+            TRUE                                 ~ ramp
           )
         },
         .names = paste0("{.col}", suffix)
       )
     ) %>%
     # drop helper columns
-    select(-start_intro, -start_intro_cps, -start_boost) %>%
+    select(-interpolation_date, -start_intro, -start_intro_cps, -start_boost) %>%
     ungroup()
 }

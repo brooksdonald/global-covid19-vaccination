@@ -20,6 +20,17 @@ lib <- c("tidyverse", "readxl", "writexl", "lubridate", "countrycode",
 lapply(lib, library, character.only = TRUE)
 
 
+# Global switches ---------------------------------------------------------
+
+# TRUE: write figures, tables, and audit outputs to the output directory.
+# FALSE: run the complete analysis without overwriting exported files.
+export_outputs <- TRUE
+
+# FALSE: use the committed, dated WHO API snapshots in the input directory.
+# TRUE: download fresh API data and overwrite the cached snapshots.
+refresh_api <- FALSE
+
+
 # Process & design variables ----------------------------------------------
 
 # Locate the repository so the script can be run from RStudio or terminal
@@ -53,8 +64,19 @@ path_project <- get_project_path()
 path_input <- file.path(path_project, "input")
 path_save <- file.path(path_project, "output")
 
-export_outputs <- TRUE
-refresh_api <- FALSE
+# Central audit log for manual exclusions, replacements, and reporting-basis
+# decisions used across manuscript analyses.
+path_data_corrections <- file.path(path_input, "data_corrections.csv")
+stopifnot(file.exists(path_data_corrections))
+data_corrections <- read.csv(
+  path_data_corrections,
+  stringsAsFactors = FALSE,
+  na.strings = c("", "NA")
+)
+stopifnot(
+  !anyDuplicated(data_corrections$correction_id),
+  all(!is.na(data_corrections$correction_id))
+)
 
 if (isTRUE(export_outputs) && !dir.exists(path_save)) {
   dir.create(path_save, recursive = TRUE)
@@ -238,10 +260,9 @@ raw_policy_wide <- data.frame(
   read_excel(file.path(path_input, "output_new.xlsx"),
              sheet = "policy_country_wide"))
 
-# Load 2024 uptake data
-raw_data_post_final <- data.frame(
-  read_excel(file.path(path_input, "output_new.xlsx"),
-             sheet = "uptake_grouping_wide_red"))
+# The 2024 uptake analysis is reconstructed from frozen source extracts in
+# 7_routine coverage analysis.R. output_new.xlsx is retained here only as the
+# source of the 2024 policy data above.
 
 # Load uncleaned risk group uptake data
 raw_target_json <- read_who_api_json(
