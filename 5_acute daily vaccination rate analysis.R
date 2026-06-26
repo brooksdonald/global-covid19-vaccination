@@ -120,7 +120,6 @@ dvr_reports_clean <- clean_coverage_monotone_df(
   id_time = "adm_date",
   vars_to_clean = "adm_tot_td",
   depth = 3,
-  batch = TRUE,
   method = "interpolate",
   round_int = TRUE
 )

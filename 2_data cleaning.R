@@ -2,22 +2,40 @@
 # Staging -----------------------------------------------------------------
 
 fix_admin_weekly_dates <- function(df) {
-  df %>%
-    mutate(date = case_when(
-      iso == "AIA" & date == as.Date("2001-02-26") ~ as.Date("2021-02-26"),
-      iso == "TTO" & date == as.Date("2001-02-26") ~ as.Date("2021-02-26"),
-      iso == "PAK" & date == as.Date("2010-03-05") ~ as.Date("2021-03-05"),
-      iso == "CAN" & date == as.Date("2020-01-29") ~ as.Date("2021-01-29"),
-      iso == "LBY" & date == as.Date("1900-05-18") ~ as.Date("2021-05-18"),
-      iso == "LBY" & date == as.Date("1900-05-20") ~ as.Date("2021-05-20"),
-      iso == "LBY" & date == as.Date("1900-05-25") ~ as.Date("2021-05-25"),
-      iso == "LBY" & date == as.Date("1900-05-26") ~ as.Date("2021-05-26"),
-      iso == "BRN" & date == as.Date("2021-03-20") ~ as.Date("2021-04-20"),
-      iso == "LBY" & date == as.Date("2021-01-08") ~ as.Date("2022-01-08"),
-      iso == "MAR" & date == as.Date("2021-01-04") ~ as.Date("2021-01-04"),
-      iso == "MAR" & date == as.Date("2021-01-08") ~ as.Date("2021-01-08"),
-      TRUE ~ as.Date(date)
-    ))
+  out <- df %>%
+    mutate(date = as.Date(date))
+
+  date_corrections <- data_corrections %>%
+    filter(
+      analysis == "acute_2021_2023",
+      action == "replace_date",
+      indicator == "adm_date",
+      dataset == "admin_weekly"
+    ) %>%
+    transmute(
+      correction_id,
+      iso,
+      old_date = as.Date(period),
+      replacement_date = as.Date(replacement_value)
+    )
+
+  stopifnot(
+    !anyDuplicated(date_corrections[c("iso", "old_date")]),
+    all(!is.na(date_corrections$replacement_date))
+  )
+
+  for (i in seq_len(nrow(date_corrections))) {
+    rule <- date_corrections[i, , drop = FALSE]
+    matched <- out$iso == rule$iso &
+      !is.na(out$date) &
+      out$date == rule$old_date
+
+    if (any(matched, na.rm = TRUE)) {
+      out$date[matched] <- rule$replacement_date
+    }
+  }
+
+  out
 }
 
 prepare_admin_total_monthly <- function(raw_weekly,
@@ -256,7 +274,6 @@ data_admin_time_mt <- clean_coverage_monotone_df(
                     "adm_hcw_cps",
                     "adm_hcw_boost"),
   depth = 36,               # full monthly analysis window, 2021-2023
-  batch = TRUE,             # drop runs of offenders in one shot
   method = "interpolate",   # "set_na" | "carry_forward" | "interpolate"
   round_int = TRUE
   ) %>%

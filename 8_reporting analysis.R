@@ -15,6 +15,60 @@ select_target_reporting_row <- function(df, target_group) {
     ungroup()
 }
 
+reporting_set_missing_corrections <- data_corrections %>%
+  filter(
+    analysis == "reporting_2021_2023",
+    action == "set_missing"
+  ) %>%
+  transmute(
+    correction_id,
+    iso,
+    group,
+    indicator,
+    date = as.Date(period),
+    match_value = as.numeric(match_value)
+  )
+
+stopifnot(
+  !anyDuplicated(
+    reporting_set_missing_corrections[c("iso", "group", "indicator", "date")]
+  )
+)
+
+apply_reporting_set_missing <- function(df, target_group, iso_col, date_col) {
+  rules <- reporting_set_missing_corrections %>%
+    filter(group == target_group)
+
+  if (nrow(rules) == 0L) {
+    return(df)
+  }
+
+  stopifnot(all(rules$indicator %in% names(df)))
+
+  out <- df
+  for (i in seq_len(nrow(rules))) {
+    rule <- rules[i, , drop = FALSE]
+    matched <- out[[iso_col]] == rule$iso &
+      !is.na(out[[date_col]]) &
+      out[[date_col]] == rule$date
+
+    stopifnot(sum(matched, na.rm = TRUE) == 1L)
+
+    if (!is.na(rule$match_value)) {
+      observed <- out[[rule$indicator]][matched]
+      stopifnot(
+        length(observed) == 1L,
+        !is.na(observed),
+        abs(observed - rule$match_value) < 0.5
+      )
+    }
+
+    out[[rule$indicator]][matched] <- NA_real_
+  }
+
+  out
+}
+
 
 # HCW - monthly count -----------------------------------------------------
 
@@ -288,18 +342,11 @@ mod_target_old <- target_old %>%
   slice(1) %>%
   ungroup() %>%
   right_join(base_blank, by = c("DATE" = "date",  "ISO_3_CODE" = "iso")) %>%
-  
-  # Step 2: correct instances when value goes to 0 or NA, based on Step 1 below
-  mutate(N_VACC_LAST_DOSE = case_when(
-    ISO_3_CODE == "PLW" & DATE %in% seq(as.Date("2022-06-01"), as.Date("2022-08-01"), by = "1 month") ~ NA,
-    TRUE ~ N_VACC_LAST_DOSE
-  ),
-  N_VACC_BOOSTER_DOSE = case_when(
-    ISO_3_CODE == "PLW" & DATE %in% seq(as.Date("2022-06-01"), as.Date("2022-08-01"), by = "1 month") ~ NA,
-    ISO_3_CODE == "MDA" & DATE %in% seq(as.Date("2021-10-01"), as.Date("2022-10-01"), by = "1 month") ~ NA,
-    ISO_3_CODE == "MDA" & DATE %in% seq(as.Date("2023-01-01"), as.Date("2023-11-01"), by = "1 month") ~ NA,
-    TRUE ~ N_VACC_BOOSTER_DOSE
-  )) %>%
+  apply_reporting_set_missing(
+    target_group = "older",
+    iso_col = "ISO_3_CODE",
+    date_col = "DATE"
+  ) %>%
   
   arrange(ISO_3_CODE, DATE) %>%
   group_by(ISO_3_CODE) %>%
@@ -398,7 +445,7 @@ count_time_old_inc_cumul <- rbind(sum_target_old_cps_inc,
 
 # Total - monthly count ----------------------------------------------------
 
-base_total <- raw_entity_details %>%
+reporting_total_weekly <- raw_entity_details %>%
   select(CODE,
          WHO_LEGAL_STATUS_TITLE,
          WHOREGIONC,
@@ -406,7 +453,7 @@ base_total <- raw_entity_details %>%
          ) %>%
   right_join(., base_total, by = c("CODE" = "COUNTRY"))
 
-total <- base_total %>%
+total <- reporting_total_weekly %>%
   filter(WHO_LEGAL_STATUS_TITLE == "Member State") %>%
   rename(iso = CODE) %>%
   mutate(year = year(DATE),
@@ -479,12 +526,11 @@ mod_total <- total %>%
                                                 WBINCOMESTATUS))) %>%
   select(-WBINCOMESTATUS) %>%
   right_join(base_blank, by = c("date" = "date",  "iso" = "iso")) %>%
-  
-  # Step 2: correct instances when value goes to 0 or NA, based on Step 1 below
-  mutate(PERSONS_VACCINATED_BOOSTER_ADD_DOSE = case_when(
-    iso == "MNG" & date == as.Date("2021-10-01") ~ NA,
-    TRUE ~ PERSONS_VACCINATED_BOOSTER_ADD_DOSE
-  )) %>%
+  apply_reporting_set_missing(
+    target_group = "total",
+    iso_col = "iso",
+    date_col = "date"
+  ) %>%
   arrange(iso, date) %>%
   group_by(iso) %>%
   fill(PERSONS_VACCINATED_COMPLETE,

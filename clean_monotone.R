@@ -1,7 +1,7 @@
 # clean_monotone.R
 # Enforce non-decreasing cumulative series per country over time.
 # - Dataframe in, dataframe out (original columns kept; cleaned copies get *_monotone).
-# - Recursive scan with "depth" window; batch removal of consecutive offenders.
+# - Recursive scan with "depth" window; removes consecutive offenders up to that window.
 # - Post-fill method:
 #     method = "set_na"        -> keep NA
 #              "carry_forward" -> LOCF
@@ -75,7 +75,7 @@ suppressPackageStartupMessages({
 }
 
 # ---------------- Core recursive fixer (marks offenders as NA) ----------------
-.fix_series_recursive <- function(x, depth = 3, batch = TRUE) {
+.fix_series_recursive <- function(x, depth = 3) {
   y <- as.numeric(x); n <- length(y); changed <- rep(FALSE, n)
   if (n <= 1) return(list(y = y, changed = changed))
   
@@ -174,7 +174,6 @@ clean_coverage_monotone_df <- function(
     id_time        = "month_name",
     suffix         = "_monotone",
     depth          = 3,
-    batch          = TRUE,
     method         = c("set_na","carry_forward","interpolate"),
     round_int      = FALSE,     # set TRUE for count series
     return_log     = TRUE
@@ -185,7 +184,7 @@ clean_coverage_monotone_df <- function(
     suppressWarnings(df[[id_time]] <- as.Date(df[[id_time]]))
   }
   if (is.null(vars_to_clean)) vars_to_clean <- .default_vars_to_clean(df)
-  message("Cleaning variables (depth=", depth, ", batch=", batch,
+  message("Cleaning variables (depth=", depth,
           ", method=", method, ", round_int=", round_int, "): ",
           paste(vars_to_clean, collapse = ", "))
   
@@ -204,7 +203,7 @@ clean_coverage_monotone_df <- function(
       group_modify(~{
         s_orig <- .x[[v]]
         # 1) mark offenders as NA (recursive)
-        tmp <- .fix_series_recursive(s_orig, depth = depth, batch = batch)
+        tmp <- .fix_series_recursive(s_orig, depth = depth)
         s_marked <- tmp$y
         # 2) post-fill per method (+ monotone clamp; + optional rounding)
         s_final <- .apply_fill_method(s_marked, method = method, round_int = round_int)
@@ -228,7 +227,7 @@ clean_coverage_monotone_df <- function(
           old_value = res$.__old_value[idx],
           new_value = res$.__new_value[idx],
           rule      = paste0("recursive_monotone -> ", method,
-                             " (depth=", depth, ", batch=", batch,
+                             " (depth=", depth,
                              ", round_int=", round_int, ")")
         )
       }
@@ -259,7 +258,6 @@ clean_coverage_monotone_df <- function(
 #   id_iso    = "a_iso",
 #   id_time   = "month_name",
 #   depth     = 6,
-#   batch     = TRUE,
 #   method    = "interpolate",   # "set_na" | "carry_forward" | "interpolate"
 #   round_int = TRUE             # set TRUE for count variables
 # )

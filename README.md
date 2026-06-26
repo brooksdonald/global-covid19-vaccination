@@ -40,6 +40,10 @@ Local input files:
 - `input/data_export_WIISE_REF_COUNTRIES.csv`: WHO reference country/entity metadata.
 - `input/data_export_WIISE_MT_REF_POPULATIONS.csv`: Population estimates by country, year, and age group.
 - `input/base_adhoc.xlsx`: Manually curated country-level fields, including older adult policy age thresholds, introduction dates, and health and care worker denominator information.
+- `input/data_corrections.csv`: Central audit log for manual exclusions, replacements, reporting-basis decisions, and documented set-missing corrections.
+- `input/2024_uptake_annual_source.csv`: Frozen annual source extract used to reconstruct 2024 priority-group uptake.
+- `input/2024_uptake_quarterly_source.csv`: Frozen quarterly source extract used to reconstruct 2024 priority-group uptake.
+- `input/2024_uptake_source_manifest.csv`: Upstream filenames, hashes, timestamps, and extraction notes for the 2024 uptake extracts.
 - `input/output_master_test.xlsx`: Archival 2021–2023 workbook retained for validation but not read by the analysis.
 - `input/output_new.xlsx`: 2024 policy data used for routine-period analyses.
 - `input/output_master.xlsx`: Earlier/archival workbook retained in the repository but not currently read by `0_master.R`.
@@ -110,9 +114,6 @@ already exist.
 To run the analysis without exporting figures or tables, set
 `export_outputs <- FALSE` near the top of `0_master.R`.
 
-Target-group uptake and daily vaccination rate inputs are still workbook-backed
-during the current porting step.
-
 ## Expected Runtime
 
 On a local laptop with required packages installed, the analysis is expected to
@@ -129,34 +130,36 @@ Primary manuscript figures and tables:
 - `output/fig_2_cov_cps_boost_priority_end2023.jpg`
 - `output/fig_3_admin_time_all.jpg`
 - `output/fig_4_cov_time_global_bygroup.jpg`
-- `output/fig_6_dvr_summary.jpg`
-- `output/fig_7_policy_2024_all.jpg`
+- `output/fig_5_dvr_summary.jpg`
+- `output/fig_6_policy_2024_all.jpg`
 - `output/Table_1_end-2023_coverage.docx`
-- `output/Table_2_dvr_max.docx`
-- `output/Table_3_2024 coverage.docx`
+- `output/Table_2_2024 uptake.docx`
+- `output/Table_S3_dvr_max.docx`
 
 Supplementary and additional outputs:
 
-- `output/fig_4_cov_time_world.jpg`
-- `output/fig_5_cov_time_mediqr.jpg`
-- `output/fig_rep_disag_time.jpg`
-- `output/fig_report_cumul_inc.jpg`
-- `output/fig_supp_4_dvr_time_increg.jpg`
-- `output/fig_supp_5_cov_time_weight_all.jpg`
-- `output/fig_supp_6_cov_mediqr_all.jpg`
-- `output/fig_supp_7_policy_revaccint.jpg`
-- `output/fig_supp_x_cov_cps_tot_vs_priority_2021_2023.jpg`
-- `output/NU_fig_risk_total_comp.jpg`
+- `output/fig_supp_1_reporting.jpg`
+- `output/fig_supp_2_cov_cps_priority_time.jpg`
+- `output/fig_supp_3_cov_time_weight_all.jpg`
+- `output/fig_supp_4_cov_mediqr_all.jpg`
+- `output/fig_supp_5_dvr_time_increg.jpg`
+- `output/2024_uptake_country_audit.csv`
+- `output/data_corrections.csv`
 
 ## Reproducibility Notes
 
 - The working directory should not need to be set manually.
 - The analysis uses cached WHO API snapshots by default and does not require
   internet access unless `refresh_api <- TRUE` is set.
-- The intended direction of this analysis is to use WHO administrative data
-  from API extracts directly, rather than relying on pre-cleaned workbook
-  exports. During manuscript development, some workbook inputs are retained
-  while the API-native workflow is being ported.
+- Total-population, target-group, and daily vaccination rate analyses are
+  reconstructed from committed WHO API snapshots and source extracts rather than
+  from pre-cleaned workbook exports.
+- The 2024 priority-group uptake analysis is reconstructed from the committed
+  annual and quarterly source extracts. The upstream source files and hashes are
+  recorded in `input/2024_uptake_source_manifest.csv`.
+- Workbook inputs retained in `input/` are either active policy/metadata inputs
+  (`base_adhoc.xlsx`, `output_new.xlsx`) or archival validation files that are
+  not read by `0_master.R`.
 - Administrative uptake data cleaning is implemented locally in this repository
   to make the exact analytic workflow reproducible for this manuscript. The
   cleaning approach is adapted from the WHO COVID-19 Vaccine Analysis Pipeline
