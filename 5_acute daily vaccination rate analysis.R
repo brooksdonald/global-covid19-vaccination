@@ -253,12 +253,15 @@ dvr_max <- dvr_weighted %>%
 
 # Calculate cross-country percentile ranges -------------------------------
 
-# The central lines use the population-weighted aggregate rates calculated
-# above. These unweighted percentiles describe variation between countries.
+# Figure 5 uses unweighted country-level medians as the central line so the
+# line and 10th–90th percentile ribbon describe the same country-level
+# distribution. Population-weighted aggregate rates are retained in dvr_weighted,
+# dvr_max, and the supplementary weighted DVR figure.
 dvr_summary_all <- data_admin_daily %>%
   filter(status_who == "Member State") %>%
   group_by(adm_date) %>%
   summarise(
+    median_rate = median(dvr_4wk_td_per, na.rm = TRUE),
     perc_10 = quantile(dvr_4wk_td_per, 0.10, na.rm = TRUE),
     perc_90 = quantile(dvr_4wk_td_per, 0.90, na.rm = TRUE),
     .groups = "drop"
@@ -276,6 +279,7 @@ dvr_summary_income <- data_admin_daily %>%
   ) %>%
   group_by(adm_date, income_group) %>%
   summarise(
+    median_rate = median(dvr_4wk_td_per, na.rm = TRUE),
     perc_10 = quantile(dvr_4wk_td_per, 0.10, na.rm = TRUE),
     perc_90 = quantile(dvr_4wk_td_per, 0.90, na.rm = TRUE),
     .groups = "drop"
@@ -317,8 +321,8 @@ data_fig_5_dvr_summary_compB <- dvr_summary %>%
   mutate(dimension = factor(dimension, levels = levels_standard))
 
 
-#Supp. figure 4
-data_fig_supp_4_dvr_time_increg <- dvr_weighted %>%
+# Supp. figure 5
+data_fig_supp_5_dvr_time_increg <- dvr_weighted %>%
   filter(type != "COVAX participation category") %>%
   mutate(type = factor(type, levels = c("All", "Income group", "WHO region")),
          dimension = factor(dimension, levels = c("Global", "AFR", "AMR", "EMR", 

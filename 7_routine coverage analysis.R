@@ -590,9 +590,9 @@ if (isTRUE(export_outputs)) {
 }
 
 
-# Prepare Table 3 inputs --------------------------------------------------
+# Prepare Table 2 inputs --------------------------------------------------
 
-data_tab_3_coverage_2024 <- raw_data_post_final %>%
+data_tab_2_uptake_2024 <- raw_data_post_final %>%
   select(
     grouping,
     type,
@@ -619,7 +619,7 @@ data_tab_3_coverage_2024 <- raw_data_post_final %>%
     indicator = case_when(
       grepl("count", indicator, ignore.case = TRUE) ~
         "Count of reporting MS",
-      grepl("cov", indicator, ignore.case = TRUE) ~ "Coverage (%)",
+      grepl("cov", indicator, ignore.case = TRUE) ~ "Uptake (%)",
       grepl("prop", indicator, ignore.case = TRUE) ~
         "Proportion of grouping population in reporting MS",
       TRUE ~ NA_character_

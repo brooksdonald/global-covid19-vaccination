@@ -725,6 +725,44 @@ data_fig_2_cov_cps_boost_priority_end2023 <- data_cov_last %>%
   filter(!is.na(x), !is.na(y))
 
 
+# Supp. Figure 2
+data_fig_supp_2_cov_cps_priority_time <- data_cov_time_country %>%
+  filter(status_who == "Member State",
+         month_name %in% as.Date(c("2021-12-01", "2023-12-01")),
+         !is.na(income_group),
+         income_group != "") %>%
+  mutate(
+    time_point = case_when(
+      month_name == as.Date("2021-12-01") ~ "End of 2021",
+      month_name == as.Date("2023-12-01") ~ "End of 2023"
+    ),
+    time_point = factor(time_point, levels = c("End of 2021", "End of 2023")),
+    income_group = factor(income_group, levels = levels_income)
+  ) %>%
+  transmute(
+    iso,
+    time_point,
+    income_group,
+    tot_cps = cov_tot_cps,
+    old_cps = cov_old_cps,
+    hcw_cps = cov_hcw_cps
+  ) %>%
+  pivot_longer(
+    cols = c(old_cps, hcw_cps),
+    names_to = "group",
+    values_to = "y"
+  ) %>%
+  mutate(
+    group = recode(group,
+                   old_cps = "Older adults",
+                   hcw_cps = "Health and care workers"),
+    group = factor(group, levels = c("Older adults", "Health and care workers")),
+    x = tot_cps,
+    diff_pp = (y - x) * 100
+  ) %>%
+  filter(!is.na(x), !is.na(y))
+
+
 # Figure 3
 ##  Add global figures to each category
 data_fig_3_admin_time_world <- data_admin_time_interp %>%
@@ -883,8 +921,8 @@ data_fig_5_cov_time_mediqr_compB <- cov_acute_summary %>%
   ungroup()
 
 
-# Supp. figure 5
-data_fig_supp_5_cov_time_weight_all_last <- data_cov_time_all %>%
+# Supp. figure 3
+data_fig_supp_3_cov_time_weight_all_last <- data_cov_time_all %>%
   filter(measure != "Total doses",
          type == "income") %>%
   mutate(measure = factor(measure, levels = levels_indicator),
@@ -896,7 +934,7 @@ data_fig_supp_5_cov_time_weight_all_last <- data_cov_time_all %>%
   ungroup() %>%
   mutate(label = scales::percent(coverage, accuracy = 1))
 
-data_fig_supp_5_cov_time_weight_all <- data_cov_time_all %>%
+data_fig_supp_3_cov_time_weight_all <- data_cov_time_all %>%
   filter(measure != "Total doses",
          type == "income") %>%
   mutate(measure = factor(measure, levels = levels_indicator),
@@ -905,8 +943,8 @@ data_fig_supp_5_cov_time_weight_all <- data_cov_time_all %>%
   arrange(group, measure, month_name) 
 
 
-# Supp. figure 6
-data_fig_supp_6_cov_mediqr_all <- cov_acute_summary %>%
+# Supp. figure 4
+data_fig_supp_4_cov_mediqr_all <- cov_acute_summary %>%
   filter(type == "income", 
          month_name < as.Date("2024-01-01")) %>%
   mutate(dimension = factor(dimension, levels = levels_income),

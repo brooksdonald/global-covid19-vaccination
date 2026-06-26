@@ -13,7 +13,7 @@ type_labels <- c(
 type_order <- c("All", "Income group", "WHO region", "COVAX participation category")
 
 # within-section order
-covax_order <- c("AMC", "Self-financing", "Non-COVAX")
+covax_order <- c("AMC", "Self-financing")
 
 # short labels for subcolumns
 measure_labels <- c(
@@ -60,6 +60,7 @@ base <- data_cov_time_all %>%
     ),
     Row_order = if_else(is.na(Row_order), 999L, Row_order)
   ) %>%
+  filter(!(type == "covax" & Row == "Non-COVAX")) %>%
   group_by(type_title, Row, Row_order, group, measure_short) %>%
   summarise(
     cov = {
@@ -137,11 +138,11 @@ ft
 export_docx(ft, path = file.path(path_save, "Table_1_end-2023_coverage.docx"))
 
 
-# Table 2 - daily vaccination rate, 2021-2023, income ---------------------
+# Supplementary Table S3 - daily vaccination rate, 2021-2023, income -------
 
 section_order <- c("All", "Income group", "WHO region", "COVAX participation category")
 
-covax_order  <- c("AMC", "Self-financing", "Non-COVAX")  # only used if present
+covax_order  <- c("AMC", "Self-financing")  # only used if present
 
 base <- dvr_max %>%
   mutate(
@@ -154,7 +155,7 @@ base <- dvr_max %>%
       section == "All" ~ 1L,
       section == "Income group" ~ match(Row, levels_income),
       section == "WHO region"   ~ match(Row, levels_region),
-      section == "COVAX status" ~ match(Row, covax_order),
+      section == "COVAX participation category" ~ match(Row, covax_order),
       TRUE ~ NA_integer_
     ),
     Row_order = if_else(is.na(Row_order), 999L, Row_order),
@@ -162,6 +163,7 @@ base <- dvr_max %>%
     # format DVR as percent
     value = if_else(is.na(dvr_per), "—", sprintf("%.2f%%", 100 * dvr_per))
   ) %>%
+  filter(!(section == "COVAX participation category" & Row == "Non-COVAX")) %>%
   arrange(section, Row_order, Row) %>%
   transmute(section, Row, adm_date, value)
 
@@ -179,7 +181,7 @@ ft_data <- base %>%
   rename(Category = Row, `Date of peak` = adm_date, `Peak DVR` = value) %>%
   select(Category, `Date of peak`, `Peak DVR`, is_header)
 
-ft <- flextable(ft_data %>% select(-is_header)) %>%
+tab_s3_dvr_max <- flextable(ft_data %>% select(-is_header)) %>%
   bold(part = "header") %>%
   bold(i = ft_data$is_header, bold = TRUE) %>%
   border(i = ft_data$is_header,
@@ -190,13 +192,13 @@ ft <- flextable(ft_data %>% select(-is_header)) %>%
   fontsize(size = 10, part = "all") %>%
   autofit()
 
-ft
+tab_s3_dvr_max
 
 # Export
-export_docx(ft, path = file.path(path_save, "Table_2_dvr_max.docx"))
+export_docx(tab_s3_dvr_max, path = file.path(path_save, "Table_S3_dvr_max.docx"))
 
 
-# Table 3 - uptake, 2024, by groups ---------------------------------------
+# Table 2 - uptake, 2024, by groups ---------------------------------------
 
 type_order   <- c("all", "income", "region", "policy")
 
@@ -208,7 +210,7 @@ type_titles <- c(
   covax  = "COVAX status"
 )
 
-base <- data_tab_3_coverage_2024 %>%
+base <- data_tab_2_uptake_2024 %>%
   mutate(
     type      = str_trim(tolower(as.character(type))),
     grouping  = str_trim(as.character(grouping)),
@@ -229,14 +231,14 @@ base <- data_tab_3_coverage_2024 %>%
   ) %>%
   select(type, type_title, grouping, row_order, group, indicator, value)
 
-# (optional) stable indicator ordering: counts -> proportions -> coverage, if present
+# (optional) stable indicator ordering: counts -> proportions -> uptake, if present
 ind_levels <- base %>%
   distinct(indicator) %>%
   mutate(
     ind_rank = case_when(
       str_detect(tolower(indicator), "^count")      ~ 1L,
       str_detect(tolower(indicator), "^proportion") ~ 2L,
-      str_detect(tolower(indicator), "^coverage")   ~ 3L,
+      str_detect(tolower(indicator), "^uptake")     ~ 3L,
       TRUE ~ 99L
     )
   ) %>%
@@ -299,16 +301,16 @@ ft_data <- wide_fmt %>%
   ) %>%
   rename(Category = grouping)
 
-tab_3_coverage_2024 <- flextable(ft_data %>% select(Category, all_of(older_cols), all_of(hcw_cols)))
+tab_2_uptake_2024 <- flextable(ft_data %>% select(Category, all_of(older_cols), all_of(hcw_cols)))
 
 labels_list <- c(
   list(Category = "Grouping"),
   setNames(as.list(ind_map$indicator), older_cols),
   setNames(as.list(ind_map$indicator), hcw_cols)
 )
-tab_3_coverage_2024 <- do.call(set_header_labels, c(list(tab_3_coverage_2024), labels_list))
+tab_2_uptake_2024 <- do.call(set_header_labels, c(list(tab_2_uptake_2024), labels_list))
 
-tab_3_coverage_2024 <- tab_3_coverage_2024 %>%
+tab_2_uptake_2024 <- tab_2_uptake_2024 %>%
   add_header_row(
     values    = c("", "Older adults", "Health and care workers"),
     colwidths = c(1, length(older_cols), length(hcw_cols))
@@ -322,10 +324,8 @@ tab_3_coverage_2024 <- tab_3_coverage_2024 %>%
   fontsize(size = 10, part = "all") %>%
   autofit()
 
-tab_3_coverage_2024
+tab_2_uptake_2024
 
 # Export
-export_docx(tab_3_coverage_2024,
-             path = file.path(path_save, "Table_3_2024 coverage.docx"))
-
-
+export_docx(tab_2_uptake_2024,
+             path = file.path(path_save, "Table_2_2024 uptake.docx"))

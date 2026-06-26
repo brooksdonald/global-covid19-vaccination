@@ -57,7 +57,7 @@ wrap2 <- function(x) str_wrap(x, width = 18)  # tweak to control line breaks
 pct_label_min <- 5                            # hide tiny % labels in Panel B
 
 # Data for panel a - policy count, global (responders only)
-data_fig_7_policy_2024_all_compA <- data_routine_policy_2024 %>%
+data_fig_6_policy_2024_all_compA <- data_routine_policy_2024 %>%
   filter(status_policy != "No response provided",
          group != "Other groups") %>%
   group_by(group, status_policy) %>%
@@ -66,13 +66,13 @@ data_fig_7_policy_2024_all_compA <- data_routine_policy_2024 %>%
   mutate(status_policy = factor(status_policy, levels = levels_policy_a),
          group = factor(group, levels = levels_group))
 
-data_fig_7_policy_2024_all_compA_tot <- data_fig_7_policy_2024_all_compA %>%
+data_fig_6_policy_2024_all_compA_tot <- data_fig_6_policy_2024_all_compA %>%
   group_by(group) %>%
   summarise(total = sum(n), .groups = "drop") %>%
   ungroup()
 
 # Data for panel b - policy count (100%), by income group (includes non-responders)
-data_fig_7_policy_2024_all_compB <- data_routine_policy_2024 %>%
+data_fig_6_policy_2024_all_compB <- data_routine_policy_2024 %>%
   filter(!is.na(income_group),
          income_group != "",
          group != "Other groups") %>%
