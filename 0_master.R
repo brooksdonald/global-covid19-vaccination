@@ -291,10 +291,11 @@ source(file.path(path_project, "8_reporting analysis.R"))
 
 
 
-# Create figures and tables ----------------------------------------------
+# Create figures, tables, and cleaned CSV exports -------------------------
 
 source(file.path(path_project, "9_figures.R"))
 source(file.path(path_project, "10_tables.R"))
+source(file.path(path_project, "11_cleaned output exports.R"))
 
 
 # End ---------------------------------------------------------------------

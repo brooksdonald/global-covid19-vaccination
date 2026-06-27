@@ -135,7 +135,7 @@ ft <- flextable(ft_data %>% select(-is_header), col_keys = header_map$col_keys) 
 ft
 
 # Export
-export_docx(ft, path = file.path(path_save, "Table_1_end-2023_coverage.docx"))
+export_docx(ft, path = file.path(path_save, "tab_1_end-2023_coverage.docx"))
 
 
 # Supplementary Table S3 - daily vaccination rate, 2021-2023, income -------
@@ -195,7 +195,7 @@ tab_s3_dvr_max <- flextable(ft_data %>% select(-is_header)) %>%
 tab_s3_dvr_max
 
 # Export
-export_docx(tab_s3_dvr_max, path = file.path(path_save, "Table_S3_dvr_max.docx"))
+export_docx(tab_s3_dvr_max, path = file.path(path_save, "tab_supp_3_dvr_max.docx"))
 
 
 # Table 2 - uptake, 2024, by groups ---------------------------------------
@@ -328,4 +328,4 @@ tab_2_uptake_2024
 
 # Export
 export_docx(tab_2_uptake_2024,
-             path = file.path(path_save, "Table_2_2024 uptake.docx"))
+             path = file.path(path_save, "tab_2_2024_uptake.docx"))

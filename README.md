@@ -23,6 +23,7 @@ WHO region, COVAX Facility participation category, and policy category.
 - `8_reporting analysis.R`: Reporting completeness analysis.
 - `9_figures.R`: Figure generation and export.
 - `10_tables.R`: Table generation and export.
+- `11_cleaned output exports.R`: Cleaned analytic CSV exports for review and reuse.
 - `clean_monotone.R`: Helper for monotonicity cleaning.
 - `clean_interpolate.R`: Helper for interpolation from vaccine introduction.
 - `a_design specifications.R`: Figure colors and design settings.
@@ -44,9 +45,7 @@ Local input files:
 - `input/2024_uptake_annual_source.csv`: Frozen annual source extract used to reconstruct 2024 priority-group uptake.
 - `input/2024_uptake_quarterly_source.csv`: Frozen quarterly source extract used to reconstruct 2024 priority-group uptake.
 - `input/2024_uptake_source_manifest.csv`: Upstream filenames, hashes, timestamps, and extraction notes for the 2024 uptake extracts.
-- `input/output_master_test.xlsx`: Archival 2021–2023 workbook retained for validation but not read by the analysis.
 - `input/output_new.xlsx`: 2024 policy data used for routine-period analyses.
-- `input/output_master.xlsx`: Earlier/archival workbook retained in the repository but not currently read by `0_master.R`.
 - `input/2026-06-12_MT_COV_UPTAKE_TARGETGROUP_LONG.json`: Cached WHO API extract for target-group uptake data.
 - `input/2026-06-12_COV_UPTAKE_WEEKLY.json`: Cached WHO API extract for weekly total-population uptake data.
 
@@ -132,9 +131,8 @@ Primary manuscript figures and tables:
 - `output/fig_4_cov_time_global_bygroup.jpg`
 - `output/fig_5_dvr_summary.jpg`
 - `output/fig_6_policy_2024_all.jpg`
-- `output/Table_1_end-2023_coverage.docx`
-- `output/Table_2_2024 uptake.docx`
-- `output/Table_S3_dvr_max.docx`
+- `output/tab_1_end-2023_coverage.docx`
+- `output/tab_2_2024_uptake.docx`
 
 Supplementary and additional outputs:
 
@@ -143,8 +141,12 @@ Supplementary and additional outputs:
 - `output/fig_supp_3_cov_time_weight_all.jpg`
 - `output/fig_supp_4_cov_mediqr_all.jpg`
 - `output/fig_supp_5_dvr_time_increg.jpg`
-- `output/2024_uptake_country_audit.csv`
-- `output/data_corrections.csv`
+- `output/tab_supp_3_dvr_max.docx`
+- `output/log_data_corrections.csv`
+- `output/data_emergency_monthly_coverage.csv`
+- `output/data_dvr_daily.csv`
+- `output/data_2024_uptake.csv`
+- `output/data_2024_policy.csv`
 
 ## Reproducibility Notes
 
@@ -154,20 +156,16 @@ Supplementary and additional outputs:
 - Total-population, target-group, and daily vaccination rate analyses are
   reconstructed from committed WHO API snapshots and source extracts rather than
   from pre-cleaned workbook exports.
+- Cleaned analytic CSV exports are written from the same in-memory objects used
+  to generate the manuscript figures and tables.
 - The 2024 priority-group uptake analysis is reconstructed from the committed
   annual and quarterly source extracts. The upstream source files and hashes are
   recorded in `input/2024_uptake_source_manifest.csv`.
-- Workbook inputs retained in `input/` are either active policy/metadata inputs
-  (`base_adhoc.xlsx`, `output_new.xlsx`) or archival validation files that are
-  not read by `0_master.R`.
+- Workbook inputs required by the analysis are limited to active policy/metadata
+  inputs (`base_adhoc.xlsx`, `output_new.xlsx`).
 - Administrative uptake data cleaning is implemented locally in this repository
   to make the exact analytic workflow reproducible for this manuscript. The
   cleaning approach is adapted from the WHO COVID-19 Vaccine Analysis Pipeline
   (CVAP), with a separate methods paper on the CVAP cleaning algorithm planned.
-  Once CVAP is publication-ready and has a stable, citable release, this
-  analysis may be refactored to call CVAP or a shared cleaning module directly.
 - The exact package environment is recorded in `renv.lock`; run
   `renv::restore()` before reproducing the outputs.
-- Before public release, remove local/session artifacts such as `.RData`,
-  `.Rhistory`, `.DS_Store`, and scratch scripts that are not part of the
-  manuscript workflow.

@@ -576,14 +576,8 @@ raw_data_post_final <- prepare_group_columns(
 
 if (isTRUE(export_outputs)) {
   write.csv(
-    data_2024_uptake_country_audit,
-    file.path(path_save, "2024_uptake_country_audit.csv"),
-    row.names = FALSE,
-    na = ""
-  )
-  write.csv(
     data_corrections,
-    file.path(path_save, "data_corrections.csv"),
+    file.path(path_save, "log_data_corrections.csv"),
     row.names = FALSE,
     na = ""
   )
