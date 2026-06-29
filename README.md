@@ -7,8 +7,9 @@ and figures for the manuscript:
 > post-emergency periods, 2021-2024
 
 The analysis summarizes COVID-19 vaccination coverage in the total population,
-older adults, and health and care workers, with stratification by income group,
-WHO region, COVAX Facility participation category, and policy category.
+older adults, and health and care workers, with stratification, where relevant,
+by income group, WHO region, COVAX Facility participation category, and
+vaccination policy category.
 
 ## Repository Structure
 
