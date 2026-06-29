@@ -28,6 +28,8 @@ WHO region, COVAX Facility participation category, and policy category.
 - `clean_interpolate.R`: Helper for interpolation from vaccine introduction.
 - `a_design specifications.R`: Figure colors and design settings.
 - `renv.lock`: Locked R package environment used for reproducibility.
+- `LICENSE`: MIT license for the analysis code.
+- `DATA_TERMS.md`: Data reuse notice for input files and derived outputs.
 - `input/`: Input data files required by the analysis.
 - `output/`: Generated figures and tables.
 
@@ -67,6 +69,18 @@ processing.
 To refresh these snapshots from the live API, set `refresh_api <- TRUE` near the
 top of `0_master.R` before running the script. Refreshing the API snapshots may
 change the analysis results if the upstream data have changed.
+
+## License and Data Reuse
+
+The MIT license in `LICENSE` applies to the analysis code in this repository.
+The input data files and derived analytic outputs are included to support
+transparent review and reproducibility of the manuscript, but they are derived
+from aggregate country-reported COVID-19 vaccination data submitted to WHO and
+from other referenced data sources. The MIT license should not be interpreted as
+changing any data-use restrictions, attribution requirements, or terms that
+apply to those underlying data sources.
+
+Additional details are provided in `DATA_TERMS.md`.
 
 ## Software Requirements
 

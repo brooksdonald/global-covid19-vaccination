@@ -1,3 +1,7 @@
+# Keep ggrepel label placement deterministic across regenerated figure exports.
+label_repel_seed <- 20240629
+
+
 # Figure 1 - end-2023 coverage, violins, income group -----------------------
 
 fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>% 
@@ -135,6 +139,7 @@ fig_3_comp_region <- data_fig_3_admin_time_plot %>%
     segment.color = "grey60", segment.size = 0.3,
     min.segment.length = 0,
     max.overlaps = Inf,
+    seed = label_repel_seed,
     show.legend = FALSE
   ) +
   coord_cartesian(ylim = c(0, 235), clip = "off") +
@@ -167,6 +172,7 @@ fig_3_comp_income <- data_fig_3_admin_time_plot %>%
     segment.color = "grey60", segment.size = 0.3,
     min.segment.length = 0,
     max.overlaps = Inf,
+    seed = label_repel_seed,
     show.legend = FALSE
   ) +
   coord_cartesian(ylim = c(0, 235), clip = "off") +
@@ -200,6 +206,7 @@ fig_3_comp_covax <- data_fig_3_admin_time_plot %>%
     segment.color = "grey60", segment.size = 0.3,
     min.segment.length = 0,
     max.overlaps = Inf,
+    seed = label_repel_seed,
     show.legend = FALSE
   ) +
   coord_cartesian(ylim = c(0, 235), clip = "off") +
@@ -250,6 +257,7 @@ fig_cov_time_global_compA <- data_fig_4_cov_time_world %>%
     segment.color = "grey60", segment.size = 0.3,
     min.segment.length = 0,
     max.overlaps = Inf,
+    seed = label_repel_seed,
     show.legend = FALSE
   ) +
   facet_wrap(~group, ncol = 3) +
@@ -562,6 +570,7 @@ fig_supp_1_reporting_compA <- data_fig_supp_1_reporting_compA %>%
     segment.color = "grey60", segment.size = 0.3,
     min.segment.length = 0,
     max.overlaps = Inf,
+    seed = label_repel_seed,
     show.legend = FALSE
   ) +
   scale_color_manual(values = pal_reporting_main, 
@@ -649,6 +658,7 @@ fig_supp_1_reporting_compB <- data_fig_supp_1_reporting_compB %>%
     segment.color = "grey60", segment.size = 0.3,
     min.segment.length = 0,
     max.overlaps = Inf,
+    seed = label_repel_seed,
     show.legend = FALSE
   ) +
   scale_color_manual(
@@ -789,6 +799,7 @@ fig_supp_3_cov_time_weight_all <- data_fig_supp_3_cov_time_weight_all %>%
     segment.color = "grey60", segment.size = 0.3,
     min.segment.length = 0,
     max.overlaps = Inf,
+    seed = label_repel_seed,
     show.legend = FALSE
   ) +
   facet_grid(group ~ dimension) +
