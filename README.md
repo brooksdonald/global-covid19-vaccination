@@ -84,6 +84,11 @@ renv::restore()
 
 If `renv` is already installed, only `renv::restore()` is required.
 
+The project `.Rprofile` uses a project-local renv sandbox (`renv/sandbox`) to
+avoid lock-acquisition hangs observed with the shared user-cache sandbox on
+fresh macOS copies. The analysis uses the project-local renv library and the
+package versions recorded in `renv.lock`.
+
 ## Running the Analysis
 
 From R:
