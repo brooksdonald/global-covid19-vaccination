@@ -847,9 +847,10 @@ data_fig_4_cov_time_world_last <- data_cov_time_world_full %>%
   filter(measure != "Total doses") %>%
   mutate(measure = factor(measure, levels = levels_indicator),
          group = factor(group, levels = levels_groups_short)) %>%
+  filter(!is.na(coverage)) %>%
   group_by(group, measure) %>%
   arrange(month_name, .by_group = TRUE) %>%
-  filter(row_number() == max(which(!is.na(coverage)))) %>%
+  slice_tail(n = 1) %>%
   ungroup() %>%
   mutate(label = scales::percent(coverage, accuracy = 1))
 
@@ -913,9 +914,10 @@ data_fig_supp_3_cov_time_weight_all_last <- data_cov_time_all %>%
   mutate(measure = factor(measure, levels = levels_indicator),
          group = factor(group, levels = levels_groups_short),
          dimension = factor(dimension, levels = levels_income)) %>%
+  filter(!is.na(coverage)) %>%
   group_by(group, measure, dimension) %>%
   arrange(month_name, .by_group = TRUE) %>%
-  filter(row_number() == max(which(!is.na(coverage)))) %>%
+  slice_tail(n = 1) %>%
   ungroup() %>%
   mutate(label = scales::percent(coverage, accuracy = 1))
 

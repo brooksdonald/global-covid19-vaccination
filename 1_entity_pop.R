@@ -9,12 +9,13 @@ base_entity <- raw_entity_details %>%
             status_covax = COVAX) %>%
   filter(!is.na(status_who)) %>%
   mutate(region_who = substr(region_who, 1, nchar(region_who) - 1),
+         income_group = trimws(as.character(income_group)),
          income_group = case_when(
            income_group == "Low income" ~ "LIC",
            income_group == "Lower middle income" ~ "LMIC",
            income_group == "Upper middle income" ~ "UMIC",
            grepl("High income", income_group) == TRUE ~ "HIC",
-           TRUE ~ income_group
+           TRUE ~ NA_character_
          ),
          status_covax = case_when(
            status_covax == "No" ~ "Non-COVAX",
@@ -65,9 +66,8 @@ pop_tot <- raw_population_select %>%
 cuts <- c(45, 50, 55, 60, 65, 70, 75, 80)
 
 pop_old <- raw_population_select %>%
-  filter(year %in% c(2021, 2024), group_age != "ALL") %>%
+  filter(year %in% c(2021, 2024), str_detect(group_age, "^Y\\d+$")) %>%
   mutate(age = as.integer(str_remove(group_age, "^Y"))) %>%
-  filter(!is.na(age)) %>%
   group_by(iso, year) %>%
   summarise(
     pop_45p = sum(value[age >= 45], na.rm = TRUE),

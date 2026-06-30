@@ -72,7 +72,7 @@ quarterly_2024_source_raw <- raw_routine_uptake_quarterly %>%
     !is.na(value),
     value != -2222,
     value != -4444,
-    age_group != "UNKNOWN"
+    is.na(age_group) | age_group != "UNKNOWN"
   ) %>%
   mutate(
     reported_group = case_when(
@@ -468,20 +468,49 @@ endpoint_counts_2024 <- data_2024_uptake_country_audit %>%
     values_fill = 0
   )
 
-stopifnot(
-  endpoint_counts_2024$direct_end_2024[
-    endpoint_counts_2024$group == "older"
-  ] == 81L,
-  endpoint_counts_2024$quarterly_carry_forward[
-    endpoint_counts_2024$group == "older"
-  ] == 21L,
-  endpoint_counts_2024$direct_end_2024[
-    endpoint_counts_2024$group == "hcw"
-  ] == 47L,
-  endpoint_counts_2024$quarterly_carry_forward[
-    endpoint_counts_2024$group == "hcw"
-  ] == 23L
+# Archived snapshots have 81 direct and 21 carry-forward older-adult endpoints.
+# The refreshed API snapshot moves Andorra older adults to direct end-2024.
+endpoint_counts_expected <- bind_rows(
+  tibble(
+    snapshot = "archived",
+    group = c("hcw", "older"),
+    direct_end_2024 = c(47L, 81L),
+    quarterly_carry_forward = c(23L, 21L)
+  ),
+  tibble(
+    snapshot = "refreshed",
+    group = c("hcw", "older"),
+    direct_end_2024 = c(47L, 82L),
+    quarterly_carry_forward = c(23L, 20L)
+  )
 )
+
+endpoint_counts_check <- endpoint_counts_2024 %>%
+  select(group, direct_end_2024, quarterly_carry_forward) %>%
+  arrange(group)
+
+endpoint_counts_match <- endpoint_counts_expected %>%
+  group_by(snapshot) %>%
+  group_split() %>%
+  vapply(
+    function(expected) {
+      expected <- expected %>%
+        ungroup() %>%
+        select(group, direct_end_2024, quarterly_carry_forward) %>%
+        arrange(group)
+
+      identical(endpoint_counts_check, expected)
+    },
+    logical(1)
+  )
+
+if (!any(endpoint_counts_match)) {
+  stop(
+    "Unexpected 2024 endpoint composition. Observed counts:\n",
+    paste(capture.output(print(endpoint_counts_2024)), collapse = "\n"),
+    call. = FALSE
+  )
+}
 
 
 # Aggregate the single capped country dataset -----------------------------

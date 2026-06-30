@@ -17,7 +17,7 @@ lib <- c("tidyverse", "lubridate", "countrycode",
          "knitr", "ordering", "shadowtext", "forcats", "flextable", "officer", 
          "rlang", "cowplot", "patchwork" )
 
-lapply(lib, library, character.only = TRUE)
+invisible(lapply(lib, library, character.only = TRUE))
 
 
 # Global switches ---------------------------------------------------------

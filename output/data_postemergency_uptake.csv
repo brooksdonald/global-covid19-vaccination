@@ -6,7 +6,7 @@
 "country","country","ALB","ALB","EUR","UMIC","Member State","hcw",184,184,36791,0.00500122312522084,0.500122312522084,FALSE,"direct_end_2024",,,,,
 "country","country","ALB","ALB","EUR","UMIC","Member State","older",1584,1584,656988,0.00241100294069298,0.241100294069298,FALSE,"direct_end_2024",,,,,
 "country","country","AND","AND","EUR","HIC","Member State","hcw",7,7,3893,0.00179809915232469,0.179809915232469,FALSE,"quarterly_carry_forward",,,,,
-"country","country","AND","AND","EUR","HIC","Member State","older",281,281,18981,0.0148042779621727,1.48042779621727,FALSE,"quarterly_carry_forward",,,,,
+"country","country","AND","AND","EUR","HIC","Member State","older",1536,1536,18981,0.0809230282914493,8.09230282914493,FALSE,"direct_end_2024",,,,,
 "country","country","ARE","ARE","EMR","HIC","Member State","hcw",,,152266,,,FALSE,,,,,,
 "country","country","ARE","ARE","EMR","HIC","Member State","older",,,413501,,,FALSE,,,,,,
 "country","country","ARG","ARG","AMR","UMIC","Member State","hcw",88939,88939,1159948,0.0766749888788118,7.66749888788118,FALSE,"direct_end_2024",,,,,
@@ -73,8 +73,8 @@
 "country","country","COD","COD","AFR","LIC","Member State","older",,,7672000,,,FALSE,,,,,,
 "country","country","COG","COG","AFR","LMIC","Member State","hcw",,,22903,,,FALSE,,,,,,
 "country","country","COG","COG","AFR","LMIC","Member State","older",,,723068,,,FALSE,,,,,,
-"country","country","COK","COK","WPR","","Member State","hcw",,,352,,,FALSE,,,,,,
-"country","country","COK","COK","WPR","","Member State","older",,,728,,,FALSE,,,,,,
+"country","country","COK","COK","WPR",,"Member State","hcw",,,352,,,FALSE,,,,,,
+"country","country","COK","COK","WPR",,"Member State","older",,,728,,,FALSE,,,,,,
 "country","country","COL","COL","AMR","UMIC","Member State","hcw",,,1047323,,,FALSE,,,,,,
 "country","country","COL","COL","AMR","UMIC","Member State","older",,,7719754,,,FALSE,,,,,,
 "country","country","COM","COM","AFR","LMIC","Member State","hcw",,,2334,,,FALSE,,,,,,
@@ -255,8 +255,8 @@
 "country","country","NGA","NGA","AFR","LMIC","Member State","older",26863,26863,23807198,0.00112835622234922,0.112835622234922,FALSE,"direct_end_2024",,,,,
 "country","country","NIC","NIC","AMR","LMIC","Member State","hcw",,,59987,,,FALSE,,,,,,
 "country","country","NIC","NIC","AMR","LMIC","Member State","older",,,574348,,,FALSE,,,,,,
-"country","country","NIU","NIU","WPR","","Member State","hcw",,,36,,,FALSE,,,,,,
-"country","country","NIU","NIU","WPR","","Member State","older",,,429,,,FALSE,,,,,,
+"country","country","NIU","NIU","WPR",,"Member State","hcw",,,36,,,FALSE,,,,,,
+"country","country","NIU","NIU","WPR",,"Member State","older",,,429,,,FALSE,,,,,,
 "country","country","NLD","NLD","EUR","HIC","Member State","hcw",,,1467661,,,FALSE,,,,,,
 "country","country","NLD","NLD","EUR","HIC","Member State","older",2340342,2340342,4976747,0.470255369621964,47.0255369621964,FALSE,"direct_end_2024",,,,,
 "country","country","NOR","NOR","EUR","HIC","Member State","hcw",4487,4487,564302,0.00795141608571297,0.795141608571297,FALSE,"direct_end_2024",,,,,
@@ -272,7 +272,7 @@
 "country","country","PAK","PAK","EMR","LMIC","Member State","hcw",,,1148724,,,FALSE,,,,,,
 "country","country","PAK","PAK","EMR","LMIC","Member State","older",,,16847561,,,FALSE,,,,,,
 "country","country","PAN","PAN","AMR","HIC","Member State","hcw",1542,1542,102528,0.0150397940074906,1.50397940074906,FALSE,"direct_end_2024",,,,,
-"country","country","PAN","PAN","AMR","HIC","Member State","older",2454,2454,610057,0.00402257493971875,0.402257493971875,FALSE,"direct_end_2024",,,,,
+"country","country","PAN","PAN","AMR","HIC","Member State","older",2615,2615,610057,0.00428648470552752,0.428648470552752,FALSE,"direct_end_2024",,,,,
 "country","country","PER","PER","AMR","UMIC","Member State","hcw",33479,33479,389042,0.0860549760694218,8.60549760694218,FALSE,"direct_end_2024",,,,,
 "country","country","PER","PER","AMR","UMIC","Member State","older",401563,401563,4446511,0.0903096832550285,9.03096832550285,FALSE,"direct_end_2024",,,,,
 "country","country","PHL","PHL","WPR","LMIC","Member State","hcw",,,549858,,,FALSE,,,,,,
@@ -388,31 +388,31 @@
 "country","country","ZWE","ZWE","AFR","LMIC","Member State","hcw",,,51323,,,FALSE,,,,,,
 "country","country","ZWE","ZWE","AFR","LMIC","Member State","older",,,1557921,,,FALSE,,,,,,
 "group","all","Global",,,,,"hcw",,2126553,33127726,0.0641925437320992,6.41925437320992,,,,133384777,33127726,70,0.248362120064121
-"group","all","Global",,,,,"older",,46231063,370549637,0.124763482091874,12.4763482091874,,,,1190013051,370549637,102,0.311382834573635
+"group","all","Global",,,,,"older",,46232479,370549637,0.124767303442265,12.4767303442265,,,,1190013051,370549637,102,0.311382834573635
 "group","income","HIC",,,,,"hcw",,826917,16478761,0.0501807751201683,5.01807751201683,,,,75913629,16478761,23,0.217072496955718
-"group","income","HIC",,,,,"older",,32280684,158850997,0.203213606522092,20.3213606522092,,,,311295826,158850997,44,0.510289517984093
+"group","income","HIC",,,,,"older",,32282100,158850997,0.203222520536022,20.3222520536022,,,,311295826,158850997,44,0.510289517984093
 "group","income","LIC",,,,,"hcw",,30393,1502480,0.0202285554549811,2.02285554549811,,,,2854951,1502480,10,0.526271729357176
 "group","income","LIC",,,,,"older",,2687060,28060876,0.0957582364855609,9.57582364855609,,,,56478303,28060876,12,0.496843469252254
 "group","income","LMIC",,,,,"hcw",,7873,2733666,0.00288001533471902,0.288001533471902,,,,14864675,2733666,13,0.183903516222184
 "group","income","LMIC",,,,,"older",,2510172,55180323,0.0454903462598434,4.54903462598434,,,,319250641,55180323,20,0.172843264549624
 "group","income","UMIC",,,,,"hcw",,1245396,11996449,0.103813720210039,10.3813720210039,,,,38798337,11996449,23,0.309200082467452
 "group","income","UMIC",,,,,"older",,8753147,128457441,0.0681404434952118,6.81404434952118,,,,494671445,128457441,26,0.259682345319124
-"group","policy","No response provided",,,,,"hcw",,102632,5958073,0.0172257036796964,1.72257036796964,,,,73365285,5958073,12,0.0812110659694159
-"group","policy","No response provided",,,,,"older",,2110876,44056589,0.0479128331973227,4.79128331973227,,,,632704325,44056589,11,0.0696321919405245
+"group","policy","No response provided",,,,,"hcw",,102632,5958073,0.0172257036796964,1.72257036796964,,,,71918464,5958073,12,0.082844831057571
+"group","policy","No response provided",,,,,"older",,1934129,40974921,0.047202751165768,4.7202751165768,,,,616496527,40974921,10,0.0664641554420306
 "group","policy","Primary vaccination & periodic revaccination recommended",,,,,"hcw",,1870134,20367628,0.0918189393482638,9.18189393482638,,,,39729661,20367628,47,0.512655469172012
-"group","policy","Primary vaccination & periodic revaccination recommended",,,,,"older",,43679149,293326809,0.148909501824635,14.8909501824635,,,,470459073,293326809,76,0.623490598511637
+"group","policy","Primary vaccination & periodic revaccination recommended",,,,,"older",,43680565,293326809,0.148914329204734,14.8914329204734,,,,470459073,293326809,76,0.623490598511637
 "group","policy","Primary vaccination only recommended",,,,,"hcw",,25049,1054502,0.0237543409116341,2.37543409116341,,,,4279009,1054502,5,0.246436032268219
-"group","policy","Primary vaccination only recommended",,,,,"older",,441030,19796353,0.022278345915533,2.2278345915533,,,,51360737,19796353,9,0.385437479216858
-"group","policy","Vaccination not recommended",,,,,"hcw",,128738,5747523,0.0223988664334184,2.23988664334184,,,,16010822,5747523,6,0.358977384171781
-"group","policy","Vaccination not recommended",,,,,"older",,8,13369886,0.000000598359627000559,0.0000598359627000559,,,,35488916,13369886,6,0.376734132989579
+"group","policy","Primary vaccination only recommended",,,,,"older",,617777,22878021,0.0270030786316701,2.70030786316701,,,,54442405,22878021,10,0.420224290238464
+"group","policy","Vaccination not recommended",,,,,"hcw",,128738,5747523,0.0223988664334184,2.23988664334184,,,,17457643,5747523,6,0.32922674613062
+"group","policy","Vaccination not recommended",,,,,"older",,8,13369886,0.000000598359627000559,0.0000598359627000559,,,,48615046,13369886,6,0.275015393382534
 "group","region","AFR",,,,,"hcw",,31618,2255361,0.0140190417409896,1.40190417409896,,,,6167299,2255361,16,0.365696717477132
 "group","region","AFR",,,,,"older",,541450,48568126,0.0111482580159671,1.11482580159671,,,,105059994,48568126,19,0.462289441973507
 "group","region","AMR",,,,,"hcw",,1399746,9262538,0.151119056137745,15.1119056137745,,,,37211953,9262538,19,0.248912976967374
-"group","region","AMR",,,,,"older",,9933751,75424996,0.131703699394296,13.1703699394296,,,,161994727,75424996,23,0.465601550104776
+"group","region","AMR",,,,,"older",,9933912,75424996,0.131705833965175,13.1705833965175,,,,161994727,75424996,23,0.465601550104776
 "group","region","EMR",,,,,"hcw",,53151,2937427,0.0180944071120746,1.80944071120746,,,,6224943,2937427,7,0.471880144123408
 "group","region","EMR",,,,,"older",,2576935,30788331,0.0836984310711743,8.36984310711743,,,,72047112,30788331,9,0.427336088086362
 "group","region","EUR",,,,,"hcw",,549799,15027916,0.0365851792091465,3.65851792091465,,,,39000292,15027916,23,0.385328294465077
-"group","region","EUR",,,,,"older",,24948080,159584014,0.156331949389367,15.6331949389367,,,,221929494,159584014,41,0.719075284333321
+"group","region","EUR",,,,,"older",,24949335,159584014,0.156339813585589,15.6339813585589,,,,221929494,159584014,41,0.719075284333321
 "group","region","SEAR",,,,,"hcw",,0,12228,0,0,,,,7765509,12228,1,0.00157465531235622
 "group","region","SEAR",,,,,"older",,1775209,6335981,0.280179028314637,28.0179028314637,,,,208039960,6335981,3,0.030455596126821
 "group","region","WPR",,,,,"hcw",,92239,3632256,0.0253944105261303,2.53944105261303,,,,37014781,3632256,4,0.0981298795202922

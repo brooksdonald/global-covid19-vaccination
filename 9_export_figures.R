@@ -6,7 +6,7 @@ label_repel_seed <- 20240629
 fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>% 
   ggplot(aes(x = income_group, y = coverage, fill = income_group)) + 
   geom_violin(trim = TRUE, na.rm = TRUE) + 
-  geom_boxplot(width = 0.1, color = "black") +
+  geom_boxplot(width = 0.1, color = "black", na.rm = TRUE) +
   facet_grid(group ~ measure, scales = "fixed", space = "free") +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
   scale_fill_manual(values = pal_income) +
@@ -41,7 +41,7 @@ fig_2_comp_summary <- data_fig_2_cov_cps_boost_priority_end2023 %>%
   ggplot(aes(x = income_group, y = diff_pp, fill = income_group)) +
   geom_hline(yintercept = 0, linewidth = 0.4) +
   geom_violin(trim = TRUE) +
-  geom_boxplot(width = 0.18, color = "black") +
+  geom_boxplot(width = 0.18, color = "black", na.rm = TRUE) +
   facet_grid(group ~ dose) +
   scale_fill_manual(values = pal_income) +
   labs(title = "Difference from parity",
@@ -111,7 +111,7 @@ theme_fig3 <- theme_master +
 fig_3_comp_region <- data_fig_3_admin_time_plot %>%
   filter(category == "Region") %>%
   ggplot(aes(month_name, coverage, color = dimension)) +
-  geom_line(linewidth = 1.2) +
+  geom_line(linewidth = 1.2, na.rm = TRUE) +
   geom_point(
     data = data_fig_3_admin_time_labels_region,
     aes(month_name, coverage),
@@ -144,7 +144,7 @@ fig_3_comp_region <- data_fig_3_admin_time_plot %>%
 fig_3_comp_income <- data_fig_3_admin_time_plot %>%
   filter(category == "Income group") %>%
   ggplot(aes(month_name, coverage, color = dimension)) +
-  geom_line(linewidth = 1.2) +
+  geom_line(linewidth = 1.2, na.rm = TRUE) +
   geom_point(
     data = data_fig_3_admin_time_labels_income,
     aes(month_name, coverage),
@@ -178,7 +178,7 @@ fig_3_comp_covax <- data_fig_3_admin_time_plot %>%
   filter(category == "COVAX",
          dimension != "Non-COVAX") %>%
   ggplot(aes(month_name, coverage, color = dimension)) +
-  geom_line(linewidth = 1.2) +
+  geom_line(linewidth = 1.2, na.rm = TRUE) +
   geom_point(
     data = data_fig_3_admin_time_labels_covax,
     aes(month_name, coverage),
@@ -221,7 +221,7 @@ fig_3_admin_time_all <- fig_3_comp_income + fig_3_comp_region + fig_3_comp_covax
 # Create panel b - weighted average
 fig_cov_time_global_compA <- data_fig_4_cov_time_world %>%
   ggplot(aes(x = month_name, y = coverage, color = measure)) +
-  geom_line(size = 1.5) +
+  geom_line(linewidth = 1.5, na.rm = TRUE) +
   geom_point(
     data = data_fig_4_cov_time_world_last,
     aes(month_name, coverage),
@@ -263,8 +263,8 @@ fig_cov_time_global_compA <- data_fig_4_cov_time_world %>%
 fig_cov_time_global_compB <- data_fig_5_cov_time_mediqr_compA_fix %>%
   ggplot(aes(x = month_name, y = med_cov, linetype = indicator,
              fill = indicator, color = indicator)) +
-  geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2) +
-  geom_line(linewidth = 1) +
+  geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2, na.rm = TRUE) +
+  geom_line(linewidth = 1, na.rm = TRUE) +
   scale_colour_manual(values = pal_dose_compare) +
   scale_fill_manual(values = pal_dose_compare) +
   scale_linetype_manual(values = c(
@@ -319,8 +319,9 @@ export_figure(
 # Create panel a - global
 fig_5_dvr_summary_compA <- data_fig_5_dvr_summary_compA %>%
   ggplot(aes(x = adm_date, y = median_rate)) +
-  geom_ribbon(aes(ymin = perc_10, ymax = perc_90), alpha = 0.2, color = "black") +
-  geom_line(size = 1.2) +
+  geom_ribbon(aes(ymin = perc_10, ymax = perc_90), alpha = 0.2,
+              color = "black", na.rm = TRUE) +
+  geom_line(linewidth = 1.2, na.rm = TRUE) +
   scale_y_continuous(labels = percent_format(),
                      limits = c(0, 0.012),
                      expand = c(0, 0)) + 
@@ -339,8 +340,9 @@ fig_5_dvr_summary_compA <- data_fig_5_dvr_summary_compA %>%
 # Create panel b - by income group
 fig_5_dvr_summary_compB <- data_fig_5_dvr_summary_compB %>%
   ggplot(aes(x = adm_date, y = median_rate, color = dimension)) +
-  geom_ribbon(aes(ymin = perc_10, ymax = perc_90, fill = dimension), alpha = 0.2) +
-  geom_line(size = 1.2) +
+  geom_ribbon(aes(ymin = perc_10, ymax = perc_90, fill = dimension),
+              alpha = 0.2, na.rm = TRUE) +
+  geom_line(linewidth = 1.2, na.rm = TRUE) +
   facet_wrap(~ dimension) +
   scale_y_continuous(labels = scales::percent_format(),
                      limits = c(0, 0.012),
@@ -513,9 +515,10 @@ data_fig_supp_1_reporting_compA <- count_time %>%
                                           "Booster")))
 
 data_fig_supp_1_reporting_compA_labels <- data_fig_supp_1_reporting_compA %>%
+  filter(!is.na(count_cumul)) %>%
   arrange(group, type, date) %>%
   group_by(group, type) %>%
-  filter(row_number() == max(which(!is.na(count_cumul)))) %>%
+  slice_tail(n = 1) %>%
   ungroup() %>%
   mutate(
     label = paste0(
@@ -532,7 +535,8 @@ data_fig_supp_1_reporting_compA_labels <- data_fig_supp_1_reporting_compA %>%
 fig_supp_1_reporting_compA <- data_fig_supp_1_reporting_compA %>%
   ggplot(aes(x = date, y = count_month, fill = type)) +
   geom_col() +
-  geom_line(aes(y = count_cumul, color = type), linewidth = 1.25) +
+  geom_line(aes(y = count_cumul, color = type), linewidth = 1.25,
+            na.rm = TRUE) +
   geom_point(
     data = data_fig_supp_1_reporting_compA_labels,
     aes(x = date, y = count_cumul, color = type),
@@ -587,8 +591,14 @@ fig_supp_1_reporting_compA <- data_fig_supp_1_reporting_compA %>%
   facet_wrap(~group)
 
 data_fig_supp_1_reporting_compB <- count_time_inc %>%
-  filter(!is.na(WBINCOME_LONG_STATUS),
-         WBINCOME_LONG_STATUS != "") %>%
+  filter(
+    WBINCOME_LONG_STATUS %in% c(
+      "High income",
+      "Upper middle income",
+      "Lower middle income",
+      "Low income"
+    )
+  ) %>%
   mutate(population = factor(population, levels = c("Total population",
                                                     "Older adults",
                                                     "Health and care workers")),
@@ -600,9 +610,10 @@ data_fig_supp_1_reporting_compB <- count_time_inc %>%
                                                                         "Low income")))
 
 data_fig_supp_1_reporting_compB_labels <- data_fig_supp_1_reporting_compB %>%
+  filter(!is.na(count_per)) %>%
   arrange(type, population, WBINCOME_LONG_STATUS, DATE) %>%
   group_by(type, population, WBINCOME_LONG_STATUS) %>%
-  filter(row_number() == max(which(!is.na(count_per)))) %>%
+  slice_tail(n = 1) %>%
   ungroup() %>%
   mutate(
     label = paste0(
@@ -620,7 +631,7 @@ data_fig_supp_1_reporting_compB_labels <- data_fig_supp_1_reporting_compB %>%
 
 fig_supp_1_reporting_compB <- data_fig_supp_1_reporting_compB %>%
   ggplot(aes(x = DATE, y = count_per, color = WBINCOME_LONG_STATUS)) +
-  geom_line(size = 1.5) +
+  geom_line(linewidth = 1.5, na.rm = TRUE) +
   geom_point(
     data = data_fig_supp_1_reporting_compB_labels,
     aes(x = DATE, y = count_per, color = WBINCOME_LONG_STATUS),
@@ -731,7 +742,7 @@ fig_supp_2_cov_cps_priority_time_summary <- data_fig_supp_2_cov_cps_priority_tim
   ggplot(aes(x = income_group, y = diff_pp, fill = income_group)) +
   geom_hline(yintercept = 0, linewidth = 0.4) +
   geom_violin(trim = TRUE) +
-  geom_boxplot(width = 0.18, color = "black") +
+  geom_boxplot(width = 0.18, color = "black", na.rm = TRUE) +
   facet_grid(group ~ time_point) +
   scale_fill_manual(values = pal_income) +
   labs(title = "Difference from parity",
@@ -761,7 +772,7 @@ export_figure(
 
 fig_supp_3_cov_time_weight_all <- data_fig_supp_3_cov_time_weight_all %>%
   ggplot(aes(x = month_name, y = coverage, color = measure)) +
-  geom_line(size = 1.5) +
+  geom_line(linewidth = 1.5, na.rm = TRUE) +
   
   # bubble point
   geom_point(data = data_fig_supp_3_cov_time_weight_all_last, 
@@ -813,8 +824,8 @@ fig_supp_4_cov_mediqr_all <- data_fig_supp_4_cov_mediqr_all %>%
   ggplot(aes(x = month_name, y = med_cov, linetype = indicator, 
              fill = indicator, color = indicator)) +
   geom_ribbon(aes(ymin = perc_25, ymax = perc_75, fill = indicator, 
-                  color = indicator), alpha = 0.2) +
-  geom_line(linewidth = 1) +
+                  color = indicator), alpha = 0.2, na.rm = TRUE) +
+  geom_line(linewidth = 1, na.rm = TRUE) +
   scale_colour_manual(values = pal_dose_compare) +
   scale_fill_manual(values = pal_dose_compare) +
   scale_linetype_manual(values = c("Complete primary series" = "solid", 
@@ -856,7 +867,7 @@ plot_dvr_time_increg_panel <- function(panel_type) {
   
   panel_data %>%
     ggplot(aes(x = adm_date, y = dvr_per, color = dimension)) +
-    geom_line(size = 1.5) +
+    geom_line(linewidth = 1.5, na.rm = TRUE) +
     geom_point(data = panel_points,
                aes(x = adm_date, y = dvr_per, color = dimension), 
                size = 3, shape = 21, fill = "black", stroke = 0) +
