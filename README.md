@@ -168,12 +168,10 @@ changed.
 
 Primary manuscript figures and tables:
 
-- `output/fig_1_cov_end2023_inc.jpg`
-- `output/fig_2_cov_cps_boost_priority_end2023.jpg`
-- `output/fig_3_admin_time_all.jpg`
-- `output/fig_4_cov_time_global_bygroup.jpg`
-- `output/fig_5_dvr_summary.jpg`
-- `output/fig_6_policy_2024_all.jpg`
+- `output/fig_1_end2023_coverage.jpg`
+- `output/fig_2_emergency_coverage_time.jpg`
+- `output/fig_3_dvr_summary.jpg`
+- `output/fig_4_policy_2024_all.jpg`
 - `output/tab_1_end-2023_coverage.docx`
 - `output/tab_2_2024_uptake.docx`
 

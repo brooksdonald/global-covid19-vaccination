@@ -1,7 +1,7 @@
 # Keep ggrepel label placement deterministic across regenerated figure exports.
 label_repel_seed <- 20240629
 
-# Figure 1 - end-2023 coverage, violins, income group -----------------------
+# Figure 1 - end-2023 coverage and priority-group parity -------------------
 
 fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>% 
   ggplot(aes(x = income_group, y = coverage, fill = income_group)) + 
@@ -10,24 +10,13 @@ fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>%
   facet_grid(group ~ measure, scales = "fixed", space = "free") +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
   scale_fill_manual(values = pal_income) +
-  labs(x = label_axis_income,
+  labs(title = "Coverage by income group",
+       x = label_axis_income,
        y = label_axis_coverage) + 
   theme_master +
   theme(legend.position = "none")
 
-fig_1_cov_end2023_inc
-
-# Export
-export_figure(
-  filename = "fig_1_cov_end2023_inc.jpg",
-  plot = fig_1_cov_end2023_inc,
-  size = "wide_tall"
-)
-
-
-# Figure 2 - end-2023 coverage comp., scatter & violin, total vs. old / hcw ----
-
-# Create panel a - scatter plots
+# Create panel b - scatter plots
 fig_2_comp_scatter <- data_fig_2_cov_cps_boost_priority_end2023 %>%
   ggplot(aes(x = x, y = y, fill = income_group)) +
   geom_abline(slope = 1, intercept = 0, linewidth = 0.6) +
@@ -47,7 +36,7 @@ fig_2_comp_scatter <- data_fig_2_cov_cps_boost_priority_end2023 %>%
         legend.justification = "left") +
   guides(fill = guide_legend(nrow = 1, byrow = TRUE))
 
-# Create panel b - violin plots
+# Create panel c - violin plots
 fig_2_comp_summary <- data_fig_2_cov_cps_boost_priority_end2023 %>%
   ggplot(aes(x = income_group, y = diff_pp, fill = income_group)) +
   geom_hline(yintercept = 0, linewidth = 0.4) +
@@ -62,22 +51,25 @@ fig_2_comp_summary <- data_fig_2_cov_cps_boost_priority_end2023 %>%
   theme(legend.position = "none")
 
 # Combine panels
-fig_2_cov_cps_boost_priority_end2023 <- (fig_2_comp_scatter | fig_2_comp_summary) + 
-  plot_layout(widths = c(1.4, 1.0)) + 
+fig_1_end2023_coverage <- (fig_1_cov_end2023_inc /
+                             (fig_2_comp_scatter | fig_2_comp_summary)) +
+  plot_layout(heights = c(1, 1.05)) +
   plot_annotation(tag_levels = "a",
-                  theme = panel_tag_theme)
+                  theme = panel_tag_theme) &
+  panel_tag_theme
 
-fig_2_cov_cps_boost_priority_end2023
+fig_1_end2023_coverage
 
 # Export
 export_figure(
-  filename = "fig_2_cov_cps_boost_priority_end2023.jpg",
-  plot = fig_2_cov_cps_boost_priority_end2023,
-  size = "extra_wide"
+  filename = "fig_1_end2023_coverage.jpg",
+  plot = fig_1_end2023_coverage,
+  width = 11,
+  height = 12
 )
 
 
-# Figure 3 - administration over time, line, all, by reg, ig, covax -------
+# Figure 2 - emergency-period coverage trends ------------------------------
 
 data_fig_3_admin_time_plot <- data_fig_3_admin_time_all %>%
   filter(!is.na(dimension), !is.na(coverage))
@@ -219,23 +211,14 @@ fig_3_comp_covax <- data_fig_3_admin_time_plot %>%
 fig_3_admin_time_all <- fig_3_comp_income + fig_3_comp_region + fig_3_comp_covax +
   plot_layout(ncol = 3) + 
   plot_annotation(
-    theme = theme(plot.title = element_text(face = "bold", size = 14, hjust = 0),
+    title = "Doses administered",
+    theme = theme(plot.title = element_text(face = "bold", size = 12, hjust = 0,
+                                            margin = margin(l = 1.28, unit = "cm")),
+                  plot.title.position = "panel",
                   plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm"))
     )
 
-fig_3_admin_time_all
-
-# Export
-export_figure(
-  filename = "fig_3_admin_time_all.jpg",
-  plot = fig_3_admin_time_all,
-  size = "double_wide"
-)
-
-
-# Figure 4 - weighted coverage over time, line, all -----------------------
-
-# Create panel a - weighted average
+# Create panel b - weighted average
 fig_cov_time_global_compA <- data_fig_4_cov_time_world %>%
   ggplot(aes(x = month_name, y = coverage, color = measure)) +
   geom_line(size = 1.5) +
@@ -265,7 +248,7 @@ fig_cov_time_global_compA <- data_fig_4_cov_time_world %>%
   labs(
     title = "Population-weighted coverage",
     x = NULL,
-    y = label_axis_coverage,
+    y = "Coverage (%)",
     color = NULL
   ) +
   theme_master +
@@ -274,7 +257,7 @@ fig_cov_time_global_compA <- data_fig_4_cov_time_world %>%
     legend.justification = "left",
     panel.spacing = unit(0.8, "lines"),
     plot.title = element_text(face = "bold", vjust = 2, size = 12),
-    plot.margin = margin(0, 0, 0, 0, "cm")
+    plot.margin = margin(0, 0.2, 0, 0, "cm")
   )
 
 fig_cov_time_global_compB <- data_fig_5_cov_time_mediqr_compA_fix %>%
@@ -297,7 +280,7 @@ fig_cov_time_global_compB <- data_fig_5_cov_time_mediqr_compA_fix %>%
   labs(
     title = "Median (IQR)",
     x = label_axis_date,
-    y = label_axis_coverage,
+    y = "Coverage (%)",
     color = NULL, fill = NULL, linetype = NULL
   ) +
   theme_master +
@@ -306,32 +289,32 @@ fig_cov_time_global_compB <- data_fig_5_cov_time_mediqr_compA_fix %>%
     legend.justification = "left",
     legend.title = element_blank(),
     plot.title = element_text(face = "bold", vjust = 3, size = 12),
-    plot.margin = margin(0, 0, 0, 0, "cm"),
+    plot.margin = margin(0, 0, 0, 0.2, "cm"),
     panel.spacing = unit(0.8, "lines")
   )
 
-# Combine (stack)
-fig_4_cov_time_global_bygroup <- (fig_cov_time_global_compA / fig_cov_time_global_compB) +
-  plot_layout(heights = c(1, 1)) +
-  plot_annotation(
-    tag_levels = "a",
-    theme = theme(
-      plot.title = element_text(face = "bold", hjust = 0, size = 14),
-      plot.margin = margin(0.5, 0.5, 0.5, 0.5, "cm")
-    )
-  ) &
+# Combine panels
+fig_2_emergency_coverage_time <- (
+  wrap_elements(full = fig_3_admin_time_all) /
+    fig_cov_time_global_compA /
+    fig_cov_time_global_compB
+) +
+  plot_layout(heights = c(1.6, 0.8, 0.8)) +
+  plot_annotation(tag_levels = "a",
+                  theme = panel_tag_theme) &
   panel_tag_theme
 
-fig_4_cov_time_global_bygroup
+fig_2_emergency_coverage_time
 
 # Export
 export_figure(
-  filename = "fig_4_cov_time_global_bygroup.jpg",
-  plot = fig_4_cov_time_global_bygroup,
-  size = "double_tall"
+  filename = "fig_2_emergency_coverage_time.jpg",
+  plot = fig_2_emergency_coverage_time,
+  width = 11,
+  height = 13
 )
 
-# Figure 5 - daily vaccination rate, line, 10/90 --------------------------
+# Figure 3 - daily vaccination rate, line, 10/90 --------------------------
 
 # Create panel a - global
 fig_5_dvr_summary_compA <- data_fig_5_dvr_summary_compA %>%
@@ -392,13 +375,13 @@ fig_5_dvr_summary
 
 # Export
 export_figure(
-  filename = "fig_5_dvr_summary.jpg",
+  filename = "fig_3_dvr_summary.jpg",
   plot = fig_5_dvr_summary,
   size = "wide_tall"
 )
 
 
-# Figure 6 - vaccination policy, 2024, bar, all ---------------------------
+# Figure 4 - vaccination policy, 2024, bar, all ---------------------------
 
 # Modify theme for figure
 theme_fig6 <- theme_master +
@@ -506,7 +489,7 @@ fig_6_policy_2024_all
 
 # Export
 export_figure(
-  filename = "fig_6_policy_2024_all.jpg",
+  filename = "fig_4_policy_2024_all.jpg",
   plot = fig_6_policy_2024_all,
   size = "double_wide"
 )
