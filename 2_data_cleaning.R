@@ -1,10 +1,11 @@
-
 # Staging -----------------------------------------------------------------
 
+# Apply logged date corrections before selecting monthly reports.
 fix_admin_weekly_dates <- function(df) {
   out <- df %>%
     mutate(date = as.Date(date))
 
+  # Date replacement rules are kept in the central correction audit log.
   date_corrections <- data_corrections %>%
     filter(
       analysis == "acute_2021_2023",
@@ -19,11 +20,13 @@ fix_admin_weekly_dates <- function(df) {
       replacement_date = as.Date(replacement_value)
     )
 
+  # Each affected country-date pair should have one unambiguous replacement.
   stopifnot(
     !anyDuplicated(date_corrections[c("iso", "old_date")]),
     all(!is.na(date_corrections$replacement_date))
   )
 
+  # Replace only the exact country-date combinations listed in the audit log.
   for (i in seq_len(nrow(date_corrections))) {
     rule <- date_corrections[i, , drop = FALSE]
     matched <- out$iso == rule$iso &
@@ -38,6 +41,7 @@ fix_admin_weekly_dates <- function(df) {
   out
 }
 
+# Reduce weekly total-population reports to one month-end cumulative record.
 prepare_admin_total_monthly <- function(raw_weekly,
                                         date_start = as.Date("2021-01-01"),
                                         date_end = as.Date("2023-12-31")) {
@@ -57,6 +61,8 @@ prepare_admin_total_monthly <- function(raw_weekly,
     mutate(month_name = floor_date(date, unit = "month")) %>%
     arrange(iso, month_name, date) %>%
     group_by(iso, month_name) %>%
+
+    # Use the latest available weekly report within each country-month.
     slice_tail(n = 1) %>%
     ungroup() %>%
     select(
@@ -69,9 +75,12 @@ prepare_admin_total_monthly <- function(raw_weekly,
     )
 }
 
+# Prepare older adult and HCW monthly reports from target-group submissions.
 prepare_admin_target_monthly <- function(raw_target,
                                          date_start = as.Date("2021-01-01"),
                                          date_end = as.Date("2023-12-31")) {
+
+  # HCW rows are considered valid when CPS is non-missing and non-zero.
   target_hcw <- raw_target %>%
     filter(TARGET_GROUP == "HW") %>%
     mutate(
@@ -88,6 +97,8 @@ prepare_admin_target_monthly <- function(raw_target,
       DATE <= date_end
     ) %>%
     group_by(ISO_3_CODE, DATE) %>%
+
+    # If duplicate HCW rows exist, retain the row with the largest CPS count.
     top_n(1, N_VACC_LAST_DOSE) %>%
     ungroup() %>%
     select(
@@ -103,6 +114,7 @@ prepare_admin_target_monthly <- function(raw_target,
       adm_hcw_boost_raw = N_VACC_BOOSTER_DOSE
     )
 
+  # Older adult rows use the same CPS-based validity and duplicate rule.
   target_old <- raw_target %>%
     filter(TARGET_GROUP == "OLDER_60") %>%
     mutate(
@@ -119,6 +131,8 @@ prepare_admin_target_monthly <- function(raw_target,
       DATE <= date_end
     ) %>%
     group_by(ISO_3_CODE, DATE) %>%
+
+    # If duplicate older adult rows exist, retain the largest CPS count.
     top_n(1, N_VACC_LAST_DOSE) %>%
     ungroup() %>%
     select(
@@ -152,15 +166,18 @@ prepare_admin_target_monthly <- function(raw_target,
     )
 }
 
+# Create a complete country-month scaffold so non-reporting months are explicit.
 data_admin_time_scaffold <- entity_pop %>%
   select(a_iso = iso) %>%
   crossing(month_name = seq(as.Date("2021-01-01"),
                             as.Date("2023-12-01"),
                             by = "1 month"))
 
+# Stage total population and target group reports before denominator joins.
 data_admin_total_monthly <- prepare_admin_total_monthly(base_total)
 data_admin_target_monthly <- prepare_admin_target_monthly(base_target)
 
+# Merge monthly total population and target group records onto the scaffold.
 data_admin_time_staged <- data_admin_time_scaffold %>%
   left_join(
     data_admin_total_monthly,
@@ -185,7 +202,7 @@ data_admin_time_staged <- data_admin_time_scaffold %>%
     adm_hcw_boost_raw
   )
 
-# Join staged uptake data with entity details
+# Join staged uptake data with entity details and analysis denominators.
 data_admin_time <- data_admin_time_staged %>%
   left_join(., entity_pop %>% select(-pop_2024, 
                                      -pop_2024_old, 
@@ -196,11 +213,16 @@ data_admin_time <- data_admin_time_staged %>%
   filter(status_who == "Member State" | iso == "PSE" | iso == "XKX",
          is.na(month_name) == FALSE) %>%
   mutate(
+    # Calculate uncapped total population coverage for HCW adjustment.
     cov_tot_a1d = adm_tot_a1d / pop_2021,
     cov_tot_cps = adm_tot_cps / pop_2021,
     cov_tot_boost = adm_tot_boost / pop_2021,
+
+    # Adjust HCW numerators when denominator sources exceed reported targets.
     hcw_flag = if_else(pop_hcw > adm_target_hcw, "Yes", NA_character_),
     hcw_diff = pmax(pop_hcw - adm_target_hcw, 0, na.rm = TRUE),
+
+    # Cap target group counts before calculating target group coverage.
     adm_hcw_a1d_cap = pmin(adm_hcw_a1d_raw, pop_hcw),
     adm_hcw_cps_cap = pmin(adm_hcw_cps_raw, pop_hcw),
     adm_hcw_boost_cap = pmin(adm_hcw_boost_raw, pop_hcw),
@@ -229,6 +251,7 @@ time_series_corrections <- data_corrections %>%
     match_value = as.numeric(match_value)
   )
 
+# Correction rules should target existing variables and unique country-months.
 stopifnot(
   all(time_series_corrections$indicator %in% names(data_admin_time)),
   !anyDuplicated(
@@ -247,6 +270,8 @@ for (i in seq_len(nrow(time_series_corrections))) {
   stopifnot(
     length(observed) == 1L,
     !is.na(observed),
+
+    # Confirm the observed value still matches the documented correction.
     abs(observed - rule$match_value) < 0.5
   )
 
@@ -256,8 +281,8 @@ for (i in seq_len(nrow(time_series_corrections))) {
 
 # Clean timeseries data ---------------------------------------------------
 
-# Identify downward breaks in cumulative time series and interpolate gaps
-source(file.path(path_project, "clean_monotone.R"))
+# Identify downward breaks in cumulative time series and interpolate gaps.
+source(file.path(path_project, "helper_clean_monotone.R"))
 
 data_admin_time_mt <- clean_coverage_monotone_df(
   data_admin_time,
@@ -276,23 +301,12 @@ data_admin_time_mt <- clean_coverage_monotone_df(
   depth = 36,               # full monthly analysis window, 2021-2023
   method = "interpolate",   # "set_na" | "carry_forward" | "interpolate"
   round_int = TRUE
-  ) %>%
-  
-  # Fill target-group values forward after last report for end-period coverage
-  group_by(iso) %>%
-  arrange(month_name) %>%
-  fill(adm_old_a1d_monotone,
-       adm_old_cps_monotone,
-       adm_old_boost_monotone,
-       adm_hcw_a1d_monotone,
-       adm_hcw_cps_monotone,
-       adm_hcw_boost_monotone) %>%
-  ungroup()
+  )
 
 # Interpolate uptake between introduction date and first report. For
-# risk-group booster series, use the country's first submitted
-# total-population booster report as the interpolation start proxy.
-source(file.path(path_project, "clean_interpolate.R"))
+# risk group booster series, use the country's first submitted
+# total population booster report as the interpolation start proxy.
+source(file.path(path_project, "helper_clean_interpolate.R"))
 
 data_admin_time_interp <- interpolate_from_intro_wide_many(
   df = data_admin_time_mt,
@@ -315,15 +329,23 @@ data_admin_time_interp <- interpolate_from_intro_wide_many(
   month_anchor_day = 15) %>%
   group_by(iso) %>%
   arrange(month_name) %>%
+
+  # Carry final cumulative values forward after each country's last report.
   fill(
     adm_tot_td_monotone_interp,
     adm_tot_a1d_monotone_interp,
     adm_tot_cps_monotone_interp,
-    adm_tot_boost_monotone_interp
+    adm_tot_boost_monotone_interp,
+    adm_old_a1d_monotone_interp,
+    adm_old_cps_monotone_interp,
+    adm_old_boost_monotone_interp,
+    adm_hcw_a1d_monotone_interp,
+    adm_hcw_cps_monotone_interp,
+    adm_hcw_boost_monotone_interp
   ) %>%
   ungroup() %>%
   
-  # Cap cleaned figures at population max after interpolation
+  # Cap cleaned figures at population max after interpolation.
   mutate(
     adm_tot_a1d_monotone_interp = pmin(adm_tot_a1d_monotone_interp, pop_2021),
     adm_tot_cps_monotone_interp = pmin(adm_tot_cps_monotone_interp, pop_2021),

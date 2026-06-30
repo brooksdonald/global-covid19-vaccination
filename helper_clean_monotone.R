@@ -1,4 +1,3 @@
-# clean_monotone.R
 # Enforce non-decreasing cumulative series per country over time.
 # - Dataframe in, dataframe out (original columns kept; cleaned copies get *_monotone).
 # - Recursive scan with "depth" window; removes consecutive offenders up to that window.
@@ -10,19 +9,14 @@
 # - Optional integer rounding with re-clamp.
 # - A change log is attached as attr(out, "monotone_log").
 
-suppressPackageStartupMessages({
-  library(dplyr)
-  library(rlang)
-})
-
-# ---------------- Var selection heuristic (edit if needed) ----------------
+# Default variable selection when columns are not provided by the caller.
 .default_vars_to_clean <- function(df) {
   nms <- names(df)
   sel <- grepl("^adm_tot_", nms) | grepl("_cap$", nms) | grepl("^cov_", nms, ignore.case = TRUE)
   nms[sel]
 }
 
-# ---------------- NA-safe neighbors & evidence counters ----------------
+# NA-safe neighbor helpers support comparisons across sparse reporting series.
 .prev_non_na_idx <- function(y, i) {
   j <- i - 1L
   while (j >= 1L && is.na(y[j])) j <- j - 1L
@@ -74,7 +68,7 @@ suppressPackageStartupMessages({
   list(y = y, changed_idx = changed_idx)
 }
 
-# ---------------- Core recursive fixer (marks offenders as NA) ----------------
+# Identify non-monotone runs and mark the most plausible offending side as NA.
 .fix_series_recursive <- function(x, depth = 3) {
   y <- as.numeric(x); n <- length(y); changed <- rep(FALSE, n)
   if (n <= 1) return(list(y = y, changed = changed))
@@ -115,8 +109,7 @@ suppressPackageStartupMessages({
   list(y = y, changed = changed)
 }
 
-# ---------------- Post-fill methods (with monotone clamp) ----------------
-# Monotone clamp (ensures non-decreasing across non-NA values)
+# Post-cleaning fills retain non-decreasing cumulative series.
 .enforce_monotone_post <- function(y) {
   res <- as.numeric(y); last <- NA_real_
   for (i in seq_along(res)) {
@@ -128,7 +121,7 @@ suppressPackageStartupMessages({
   res
 }
 
-# LOCF
+# Last observation carried forward for already-started cumulative series.
 .ffill_vec <- function(y) {
   last <- NA_real_
   for (i in seq_along(y)) {
@@ -137,7 +130,7 @@ suppressPackageStartupMessages({
   y
 }
 
-# Linear interpolation for interior gaps only; edges remain NA
+# Linear interpolation is limited to internal gaps; leading/trailing NA remain.
 .interpolate_internal <- function(y) {
   n <- length(y); if (all(is.na(y))) return(y)
   x <- seq_len(n); good <- which(!is.na(y))
@@ -161,12 +154,12 @@ suppressPackageStartupMessages({
   out
 }
 
-# Safe inequality for logging
+# NA-safe inequality identifies changed values for the audit log.
 .neq <- function(a, b) {
   (is.na(a) & !is.na(b)) | (!is.na(a) & is.na(b)) | (!is.na(a) & !is.na(b) & a != b)
 }
 
-# ---------------- Public API ----------------
+# Public cleaner used by monthly coverage and daily vaccination-rate analyses.
 clean_coverage_monotone_df <- function(
     df,
     vars_to_clean  = NULL,
@@ -205,7 +198,7 @@ clean_coverage_monotone_df <- function(
         # 1) mark offenders as NA (recursive)
         tmp <- .fix_series_recursive(s_orig, depth = depth)
         s_marked <- tmp$y
-        # 2) post-fill per method (+ monotone clamp; + optional rounding)
+        # 2) post-fill per method, then clamp and round count series when requested
         s_final <- .apply_fill_method(s_marked, method = method, round_int = round_int)
         
         .x[[v_clean]]    <- s_final
@@ -250,15 +243,3 @@ clean_coverage_monotone_df <- function(
   }
   out
 }
-
-# ---------------- Example (commented) ----------------
-# df <- readxl::read_excel("coverage.xlsx", sheet = "Sheet1")
-# df_clean <- clean_coverage_monotone_df(
-#   df,
-#   id_iso    = "a_iso",
-#   id_time   = "month_name",
-#   depth     = 6,
-#   method    = "interpolate",   # "set_na" | "carry_forward" | "interpolate"
-#   round_int = TRUE             # set TRUE for count variables
-# )
-# attr(df_clean, "monotone_log") %>% dplyr::arrange(a_iso, month_name, variable)

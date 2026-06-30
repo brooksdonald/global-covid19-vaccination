@@ -1,3 +1,4 @@
+# Interpolate early cumulative uptake from programme introduction to first report.
 interpolate_from_intro_wide_many <- function(df,
                                              vars,
                                              date_col         = "month_name",
@@ -7,7 +8,7 @@ interpolate_from_intro_wide_many <- function(df,
                                              cps_delay_months = 2,
                                              month_anchor_day = 15,
                                              suffix           = "_interp") {
-  # Coerce key date columns once
+  # Coerce key date columns once before country-level interpolation.
   if (!inherits(df[[date_col]],  "Date"))  df[[date_col]]  <- as.Date(df[[date_col]])
   if (!inherits(df[[intro_col]], "Date"))  df[[intro_col]] <- as.Date(df[[intro_col]])
 
@@ -19,6 +20,7 @@ interpolate_from_intro_wide_many <- function(df,
   }
   month_anchor_day <- as.integer(month_anchor_day)
 
+  # Month anchors allow introduction dates and monthly reports to share a scale.
   month_anchor <- function(x) {
     x <- as.Date(x)
     out <- as.Date(rep(NA_character_, length(x)))
@@ -31,7 +33,7 @@ interpolate_from_intro_wide_many <- function(df,
     out
   }
   
-  # Resolve vars to character vector
+  # Resolve selected variables and stop early if required fields are absent.
   var_names <- if (is.character(vars)) vars else names(dplyr::select(df, {{ vars }}))
   missing_cols <- setdiff(
     c(iso_col, date_col, intro_col, boost_reference_var, var_names),
@@ -80,7 +82,7 @@ interpolate_from_intro_wide_many <- function(df,
           var_name <- cur_column()
           v        <- .x
           
-          # Choose the start date vector for this variable
+          # Choose the interpolation start date by dose type.
           start_vec <-
             if (!is.null(boost_reference_var) &&
                 identical(var_name, boost_reference_var)) {
@@ -96,7 +98,7 @@ interpolate_from_intro_wide_many <- function(df,
               start_intro
             }
           
-          # Find first non-NA report for this variable (per group)
+          # Find the first observed value for this variable and country.
           idxs       <- which(!is.na(v))
           first_idx  <- if (length(idxs)) idxs[1] else NA_integer_
           first_val  <- if (is.na(first_idx)) NA_real_ else v[first_idx]
@@ -106,15 +108,15 @@ interpolate_from_intro_wide_many <- function(df,
             interpolation_date[first_idx]
           }
           
-          # Linear ramp weights from start_vec -> first_date
+          # Build linear weights from start date to first report date.
           den <- as.numeric(as.Date(first_date) - as.Date(start_vec))
           num <- as.numeric(as.Date(interpolation_date) - as.Date(start_vec))
           w   <- ifelse(!is.na(den) & den > 0, pmax(0, pmin(1, num/den)), NA_real_)
           
-          # Interpolate from 0 at start_vec up to first_val at first_date
+          # Interpolate from zero at start date to the first observed value.
           ramp <- ifelse(!is.na(w), 0 + (first_val - 0) * w, NA_real_)
           
-          # Use ramp only within [start_vec, first_date]; elsewhere keep original
+          # Use the ramp only before the first report; preserve observed values.
           case_when(
             is.na(start_vec) | is.na(first_date) ~ v,
             first_date <= start_vec              ~ v,
@@ -126,7 +128,7 @@ interpolate_from_intro_wide_many <- function(df,
         .names = paste0("{.col}", suffix)
       )
     ) %>%
-    # drop helper columns
+    # Drop temporary anchors after the interpolated variables are created.
     select(-interpolation_date, -start_intro, -start_intro_cps, -start_boost) %>%
     ungroup()
 }

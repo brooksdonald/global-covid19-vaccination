@@ -1,27 +1,6 @@
-# Reconstruct 2024 routine uptake for older adults and HCWs ----------------
+# Prepare 2024 routine uptake for older adults and HCWs --------------------
 
-# This analysis uses direct end-2024 country reports where available. When an
-# end-2024 value is unavailable, Q1-Q3 reports are reconciled to a cumulative
-# value and the latest available value is carried forward to 31 December 2024.
-#
-# The source extracts are intentionally limited to records used by this
-# manuscript. Their upstream filenames and SHA-256 hashes are recorded in
-# input/2024_uptake_source_manifest.csv. All manual decisions inherited from
-# framework_new.R are recorded in input/data_corrections.csv.
-
-path_uptake_annual_2024 <- file.path(
-  path_input,
-  "2024_uptake_annual_source.csv"
-)
-path_uptake_quarterly_2024 <- file.path(
-  path_input,
-  "2024_uptake_quarterly_source.csv"
-)
-stopifnot(
-  file.exists(path_uptake_annual_2024),
-  file.exists(path_uptake_quarterly_2024)
-)
-
+# Restrict the central correction log to 2024 routine uptake decisions.
 data_2024_uptake_corrections <- data_corrections %>%
   filter(analysis == "routine_2024")
 
@@ -36,18 +15,24 @@ stopifnot(all(required_correction_columns %in%
 
 # Prepare source records --------------------------------------------------
 
-annual_2024_source <- read.csv(
-  path_uptake_annual_2024,
-  stringsAsFactors = FALSE,
-  na.strings = c("", "NA")
-) %>%
+# Annual reports are already end-2024 values in the AD_COVERAGES snapshot.
+annual_2024_source <- raw_routine_uptake_annual %>%
+  filter(YEAR == 2024) %>%
   transmute(
-    iso,
-    group,
-    period,
-    source,
-    dataset,
-    value = as.numeric(value),
+    iso = if ("COUNTRY__CODE" %in% names(raw_routine_uptake_annual)) {
+      COUNTRY__CODE
+    } else {
+      COUNTRY
+    },
+    group = case_when(
+      TARGETDEFINITION == "POLICY_RECOMMENDATION_ELDERLY" ~ "older",
+      TARGETDEFINITION == "POLICY_RECOMMENDATION_HCW" ~ "hcw",
+      TRUE ~ NA_character_
+    ),
+    period = "end_2024",
+    source = if_else(is.na(SOURCE) | SOURCE == "", "EJRF", SOURCE),
+    dataset = "annual",
+    value = as.numeric(DOSES),
     derivation = "reported_target_group",
     correction_id = NA_character_
   ) %>%
@@ -57,17 +42,64 @@ annual_2024_source <- read.csv(
     value >= 0
   )
 
-quarterly_2024_source_raw <- read.csv(
-  path_uptake_quarterly_2024,
-  stringsAsFactors = FALSE,
-  na.strings = c("", "NA")
-) %>%
-  mutate(value = as.numeric(value))
+# Quarterly reports require target-group and age-band harmonization.
+quarterly_2024_source_raw <- raw_routine_uptake_quarterly %>%
+  filter(
+    YEAR == 2024 & REPORTING_PERIOD %in% c(4, 7, 10) |
+      YEAR == 2025 & REPORTING_PERIOD == 1
+  ) %>%
+  transmute(
+    iso = if ("COUNTRY__CODE" %in% names(raw_routine_uptake_quarterly)) {
+      COUNTRY__CODE
+    } else {
+      COUNTRY
+    },
+    period = case_when(
+      YEAR == 2024 & REPORTING_PERIOD == 4 ~ "q1",
+      YEAR == 2024 & REPORTING_PERIOD == 7 ~ "q2",
+      YEAR == 2024 & REPORTING_PERIOD == 10 ~ "q3",
+      YEAR == 2025 & REPORTING_PERIOD == 1 ~ "end_2024",
+      TRUE ~ NA_character_
+    ),
+    source = if_else(is.na(SOURCE) | SOURCE == "", "EJRF", SOURCE),
+    age_group = AGEGROUP,
+    target_group = TARGET_GROUP,
+    value = as.numeric(N_VACC_DOSE1)
+  ) %>%
+  filter(
+    # Negative source values are sentinel non-response codes, not uptake counts.
+    !is.na(period),
+    !is.na(value),
+    value != -2222,
+    value != -4444,
+    age_group != "UNKNOWN"
+  ) %>%
+  mutate(
+    reported_group = case_when(
+      age_group == "GTEQ_60_YEARS" ~ "older",
+      target_group == "POLICY_RECOMMENDATION_ELDERLY" ~ "older",
+      target_group %in% c("POLICY_RECOMMENDATION_HCW", "HW") ~ "hcw",
+      age_group == "60_69_YEARS" ~ "60_69_YEARS",
+      age_group == "70_79_YEARS" ~ "70_79_YEARS",
+      age_group == "GTEQ_80_YEARS" ~ "GTEQ_80_YEARS",
+      TRUE ~ NA_character_
+    )
+  ) %>%
+  filter(
+    reported_group %in% c(
+      "older",
+      "hcw",
+      "60_69_YEARS",
+      "70_79_YEARS",
+      "GTEQ_80_YEARS"
+    )
+  ) %>%
+  group_by(iso, period, source, reported_group) %>%
+  summarise(value = sum(value), .groups = "drop")
 
 # TESSY countries sometimes reported a pre-aggregated older-adult value and
 # sometimes reported the component age groups. Use the pre-aggregated value
-# when present; otherwise sum only 60-69, 70-79 and >=80 years. The previous
-# framework accidentally included non-age target groups in this fallback sum.
+# when present; otherwise sum only 60-69, 70-79 and >=80 years.
 quarterly_2024_age_sum <- quarterly_2024_source_raw %>%
   filter(
     source == "TESSY",
@@ -118,6 +150,7 @@ uptake_2024_source <- bind_rows(
 
 # Apply documented corrections -------------------------------------------
 
+# Match correction rules with "*" wildcards and value checks when supplied.
 rule_matches <- function(data, rule, include_value = TRUE) {
   matched <- rep(TRUE, nrow(data))
 
@@ -142,6 +175,7 @@ rule_matches <- function(data, rule, include_value = TRUE) {
 replacement_rules <- data_2024_uptake_corrections %>%
   filter(action == "add_or_replace")
 
+# Manual replacements remove any matching source rows before adding the value.
 for (i in seq_len(nrow(replacement_rules))) {
   rule <- replacement_rules[i, , drop = FALSE]
   matched <- rule_matches(uptake_2024_source, rule, include_value = FALSE)
@@ -165,6 +199,7 @@ for (i in seq_len(nrow(replacement_rules))) {
 exclusion_rules <- data_2024_uptake_corrections %>%
   filter(action == "exclude_record")
 
+# Exclusion rules remove documented invalid or out-of-scope source rows.
 for (i in seq_len(nrow(exclusion_rules))) {
   rule <- exclusion_rules[i, , drop = FALSE]
   matched <- rule_matches(uptake_2024_source, rule)
@@ -178,8 +213,8 @@ uptake_2024_source <- uptake_2024_source %>%
   filter(!(any(source == "EJRF") & source == "WPR")) %>%
   ungroup()
 
-# Resolve duplicate sources deterministically. Directly reported target-group
-# values are preferred to older-age-band sums; within the same derivation,
+# Resolve duplicate sources deterministically. Directly reported target group
+# values are preferred to older age-band sums; within the same derivation,
 # TESSY is preferred to EJRF and EJRF to WPR.
 uptake_2024_selected <- uptake_2024_source %>%
   mutate(
@@ -223,6 +258,7 @@ stopifnot(
 
 # Reconcile quarterly and annual values ----------------------------------
 
+# Keep values, sources, derivations, and correction IDs in parallel wide tables.
 uptake_2024_values_wide <- uptake_2024_selected %>%
   select(iso, group, period, value) %>%
   pivot_wider(names_from = period, values_from = value)
@@ -260,6 +296,7 @@ basis_overrides <- data_2024_uptake_corrections %>%
     names_prefix = "basis_override_"
   )
 
+# Determine whether quarterly reports are cumulative or quarter-specific.
 uptake_2024_reconciled <- uptake_2024_values_wide %>%
   full_join(
     uptake_2024_sources_wide,
@@ -275,6 +312,7 @@ uptake_2024_reconciled <- uptake_2024_values_wide %>%
   ) %>%
   left_join(basis_overrides, by = c("iso", "group")) %>%
   mutate(
+    # TESSY quarterly values are treated as cumulative unless explicitly noted.
     q2_basis_default = case_when(
       source_q2 == "TESSY" ~ "cumulative",
       !is.na(q2) & !is.na(q1) & q2 < q1 ~ "additive",
@@ -287,6 +325,7 @@ uptake_2024_reconciled <- uptake_2024_values_wide %>%
     ),
     q2_basis = coalesce(basis_override_q2, q2_basis_default),
     q3_basis = coalesce(basis_override_q3, q3_basis_default),
+    # Drop implausible additive Q2 values that would exceed the later Q3 total.
     q2_clean = case_when(
       q2_basis == "additive" &
         !is.na(q1) &
@@ -301,6 +340,7 @@ uptake_2024_reconciled <- uptake_2024_values_wide %>%
       is.na(q2_clean) & !is.na(q1) ~ q1,
       TRUE ~ q2_clean
     ),
+    # Convert Q3 to cumulative form according to the selected reporting basis.
     cumulative_q3 = case_when(
       q3_basis == "additive" &
         (!is.na(cumulative_q2) | !is.na(q3)) ~
@@ -308,6 +348,7 @@ uptake_2024_reconciled <- uptake_2024_values_wide %>%
       is.na(q3) & !is.na(cumulative_q2) ~ cumulative_q2,
       TRUE ~ q3
     ),
+    # Use direct annual values when present; otherwise carry forward Q3.
     annual_uptake_raw = coalesce(end_2024, cumulative_q3),
     endpoint_method = case_when(
       !is.na(end_2024) ~ "direct_end_2024",
@@ -445,6 +486,8 @@ stopifnot(
 
 # Aggregate the single capped country dataset -----------------------------
 
+# Summaries use all countries for denominator availability and reporting
+# countries for uptake numerators and reporting-population denominators.
 summarise_2024_uptake <- function(data, grouping, type_label) {
   grouping <- enquo(grouping)
 
@@ -496,6 +539,7 @@ uptake_2024_global <- data_2024_uptake_country_audit %>%
   mutate(global = "Global") %>%
   summarise_2024_uptake(global, "all")
 
+# Policy-stratified uptake uses the matching 2024 policy status by target group.
 policy_2024_for_uptake <- data_routine_policy_2024 %>%
   filter(
     group %in% c("Older adults", "Health and care workers")
@@ -529,6 +573,7 @@ data_2024_uptake_grouping_audit <- bind_rows(
   uptake_2024_global
 )
 
+# Put older adult and HCW summary fields side by side for Table 2.
 prepare_group_columns <- function(data, selected_group, suffix) {
   count_suffix <- if (suffix == "old") "older" else suffix
 
@@ -575,6 +620,7 @@ raw_data_post_final <- prepare_group_columns(
   )
 
 if (isTRUE(export_outputs)) {
+  # Export the correction audit log with the same run as the analytic outputs.
   write.csv(
     data_corrections,
     file.path(path_save, "log_data_corrections.csv"),

@@ -1,3 +1,0 @@
-extract_file,source_file,source_sha256,source_modified,extraction
-2024_uptake_annual_source.csv,data_export_WIISE_AD_COVERAGES.csv,bb08a8e89fc625ce0cae77ed26472f9aed25f1df0b5bc61a3935ce1b50d78be8,2025-09-02 15:12:55 EDT,"Rows for POLICY_RECOMMENDATION_ELDERLY and POLICY_RECOMMENDATION_HCW; original count and percentage retained."
-2024_uptake_quarterly_source.csv,data_export_WIISE_COV_UPTAKE.csv,861fe53901f41bcf36ae9758934cb53831e9726254dfe9e09ba412b0743f6fd4,2025-09-02 15:12:55 EDT,"2024 Q1-Q3 and January 2025 end-2024 records for older adults, HCWs, and the three TESSY older-age bands; summed within country, period, source, and reported group."

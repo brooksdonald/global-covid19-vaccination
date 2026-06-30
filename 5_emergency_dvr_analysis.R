@@ -1,13 +1,11 @@
-# Reconstruct daily vaccination rates -------------------------------------
-
-# The CVAP DVR pipeline produced this series in an intermediate workbook.
-# Reconstruct the manuscript input directly from the committed WHO weekly
-# cumulative uptake snapshot, using only the total-dose fields required here.
+# Prepare daily vaccination rates -----------------------------------------
 
 prepare_dvr_reports <- function(raw_weekly,
                                 date_start = as.Date("2021-01-01"),
                                 date_end = as.Date("2023-12-31")) {
   raw_weekly %>%
+
+    # Keep only non-negative cumulative total-dose reports in the analysis window.
     transmute(
       iso = COUNTRY,
       adm_date = as.Date(DATE),
@@ -29,12 +27,14 @@ prepare_dvr_reports <- function(raw_weekly,
       adm_date <= date_end
     ) %>%
     group_by(iso, adm_date) %>%
+
     # Retain the largest cumulative value if duplicate country-date records
     # remain after exact duplicate removal.
     summarise(adm_tot_td = max(adm_tot_td), .groups = "drop")
 }
 
 trailing_mean_partial <- function(x, width = 28L) {
+  # Calculate a trailing mean even before a full 28-day window is available.
   x_zero <- ifelse(is.na(x), 0, x)
   cumulative_sum <- cumsum(x_zero)
   cumulative_n <- cumsum(!is.na(x))
@@ -52,10 +52,9 @@ interpolate_dvr_daily <- function(df) {
       last_report_date <- max(.x$adm_date)
       reported_intro_date <- as.Date(first(.x$date_intro))
 
-      # CVAP used the programme introduction date as a zero anchor. Where it
-      # was unavailable or did not precede the first report, use the preceding
-      # day so the first cumulative report is retained without extrapolating
-      # backwards from an invalid interval.
+      # Use the programme introduction date as a zero anchor. Where it is
+      # unavailable or does not precede the first report, use the preceding day
+      # so the first cumulative report is retained without extrapolation.
       interpolation_start <- if (
         is.na(reported_intro_date) ||
         reported_intro_date >= first_report_date
@@ -66,6 +65,7 @@ interpolate_dvr_daily <- function(df) {
       }
 
       daily <- tibble(
+        # Create the full daily sequence anchored at introduction or first report.
         adm_date = seq.Date(
           interpolation_start,
           last_report_date,
@@ -82,6 +82,7 @@ interpolate_dvr_daily <- function(df) {
           is.na(daily$adm_tot_td_monotone)
       ] <- 0
 
+      # Interpolate the cumulative curve between observed cumulative reports.
       reported_idx <- which(!is.na(daily$adm_tot_td_monotone))
       daily$adm_tot_td_daily <- if (length(reported_idx) >= 2L) {
         approx(
@@ -112,7 +113,8 @@ interpolate_dvr_daily <- function(df) {
 
 dvr_reports <- prepare_dvr_reports(base_total)
 
-source(file.path(path_project, "clean_monotone.R"))
+# Clean DVR cumulative totals using the same monotonicity rule as coverage data.
+source(file.path(path_project, "helper_clean_monotone.R"))
 
 dvr_reports_clean <- clean_coverage_monotone_df(
   dvr_reports,
@@ -126,12 +128,14 @@ dvr_reports_clean <- clean_coverage_monotone_df(
 
 dvr_monotone_log <- attr(dvr_reports_clean, "monotone_log")
 
+# Add programme introduction dates for country-specific interpolation anchors.
 dvr_reports_clean <- dvr_reports_clean %>%
   left_join(
     entity_pop %>% select(iso, date_intro),
     by = "iso"
   )
 
+# Track countries where the first report date is used as the practical anchor.
 dvr_intro_fallback_log <- dvr_reports_clean %>%
   group_by(iso) %>%
   summarise(
@@ -149,6 +153,7 @@ dvr_intro_fallback_log <- dvr_reports_clean %>%
     )
   )
 
+# Interpolate daily cumulative totals and retain the trailing 28-day rate.
 raw_data_acute_time_daily <- dvr_reports_clean %>%
   interpolate_dvr_daily() %>%
   filter(
@@ -164,7 +169,7 @@ raw_data_acute_time_daily <- dvr_reports_clean %>%
 
 # Staging -----------------------------------------------------------------
 
-# Select relevant admin. variables, merge with relevant entity details
+# Attach entity metadata and population denominators to daily rate records.
 data_admin_daily <- raw_data_acute_time_daily %>%
   transmute(iso = a_iso,
             adm_date = adm_date,
@@ -173,13 +178,13 @@ data_admin_daily <- raw_data_acute_time_daily %>%
                                      status_covax, pop_2021),
             by = "iso") %>%
   
-  # Calculate dvr as percentage of total pop.
+  # Express DVR as a percentage of the 2021 total population denominator.
   mutate(dvr_4wk_td_per = dvr_4wk_td / pop_2021)
 
 
 # Calculate weighted average of dvr per country grouping ------------------
 
-# Weighted figures aggregate doses first, then divide by reporting population
+# Weighted figures aggregate doses first, then divide by reporting population.
 
 dvr_weighted_all <- data_admin_daily %>%
   filter(status_who == "Member State",
@@ -242,7 +247,7 @@ dvr_weighted <- rbind(dvr_weighted_all,
   ),
   dvr_per = dvr / pop)
 
-# Filter to max aggregate dvr per country grouping
+# Filter to max aggregate dvr per country grouping.
 dvr_max <- dvr_weighted %>%
   group_by(dimension) %>%
   filter(dvr_per == max(dvr_per)) %>%
@@ -252,10 +257,6 @@ dvr_max <- dvr_weighted %>%
 
 # Calculate cross-country percentile ranges -------------------------------
 
-# Figure 5 uses unweighted country-level medians as the central line so the
-# line and 10th–90th percentile ribbon describe the same country-level
-# distribution. Population-weighted aggregate rates are retained in dvr_weighted,
-# dvr_max, and the supplementary weighted DVR figure.
 dvr_summary_all <- data_admin_daily %>%
   filter(status_who == "Member State") %>%
   group_by(adm_date) %>%
@@ -304,7 +305,7 @@ dvr_summary <- bind_rows(
 
 # Prepare visualizations ---------------------------------------------------
 
-# Figure 6
+# Figure 5
 data_fig_5_dvr_summary_compA <- dvr_summary %>%
   filter(
     type == "All",

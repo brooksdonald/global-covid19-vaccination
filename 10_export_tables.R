@@ -9,22 +9,22 @@ type_labels <- c(
   covax  = "COVAX participation category"
 )
 
-# section order (subheaders)
+# Table sections appear in manuscript order.
 type_order <- c("All", "Income group", "WHO region", "COVAX participation category")
 
-# within-section order
+# COVAX table rows include participating groups only.
 covax_order <- c("AMC", "Self-financing")
 
-# short labels for subcolumns
+# Dose labels are shortened for compact table headers.
 measure_labels <- c(
   "Complete primary series"   = "CPS",
   "At least one booster dose" = "Booster"
 )
 
-# desired group order
+# Population groups are ordered consistently across tables.
 group_order <- levels_groups_short
 
-# desired output column order
+# Interleave CPS and booster columns within each population group.
 value_cols <- as.vector(
   unlist(lapply(group_order, function(g) paste(g, c("CPS", "Booster"), sep = "___")))
 )
@@ -81,7 +81,7 @@ base <- data_cov_time_all %>%
   ) %>%
   arrange(type_title, Row_order, Row)
 
-# add any missing columns so structure is stable
+# Add missing group-measure columns so table structure is stable across reruns.
 for (nm in value_cols) {
   if (!nm %in% names(base)) base[[nm]] <- ""
 }
@@ -109,7 +109,7 @@ ft_data <- base %>%
   rename(Category = Row) %>%
   select(Category, all_of(value_cols), is_header)
 
-# header mapping for flextable
+# Map internal column keys to the two-row flextable header.
 header_map <- tibble(
   col_keys = c("Category", value_cols),
   header1  = c("Category", rep(group_order, each = 2)),
@@ -142,12 +142,13 @@ export_docx(ft, path = file.path(path_save, "tab_1_end-2023_coverage.docx"))
 
 section_order <- c("All", "Income group", "WHO region", "COVAX participation category")
 
-covax_order  <- c("AMC", "Self-financing")  # only used if present
+# COVAX rows are ordered when they appear in the peak-rate table.
+covax_order  <- c("AMC", "Self-financing")
 
 base <- dvr_max %>%
   mutate(
-    section = type,          # this is your section label
-    Row = dimension,               # this is the level within the section
+    section = type,
+    Row = dimension,
     adm_date = as.Date(adm_date),
     section = factor(section, levels = section_order),
     
@@ -160,7 +161,7 @@ base <- dvr_max %>%
     ),
     Row_order = if_else(is.na(Row_order), 999L, Row_order),
     
-    # format DVR as percent
+    # Format peak daily vaccination rate as percent of 2021 population.
     value = if_else(is.na(dvr_per), "—", sprintf("%.2f%%", 100 * dvr_per))
   ) %>%
   filter(!(section == "COVAX participation category" & Row == "Non-COVAX")) %>%
@@ -231,7 +232,7 @@ base <- data_tab_2_uptake_2024 %>%
   ) %>%
   select(type, type_title, grouping, row_order, group, indicator, value)
 
-# (optional) stable indicator ordering: counts -> proportions -> uptake, if present
+# Stable indicator ordering keeps counts, reporting coverage, and uptake grouped.
 ind_levels <- base %>%
   distinct(indicator) %>%
   mutate(
@@ -262,16 +263,16 @@ wide <- base2 %>%
 older_cols <- paste0("Older adults__", ind_map$ind_key)
 hcw_cols   <- paste0("Health and care workers__", ind_map$ind_key)
 
-# ensure missing cols exist (robust to missing group/indicator combos)
+# Add empty group-indicator columns if a combination is absent in the data.
 for (nm in c(older_cols, hcw_cols)) if (!nm %in% names(wide)) wide[[nm]] <- NA_real_
 
 fmt_cell <- function(ind_label, x) {
   if (is.na(x)) return("—")
   lab <- tolower(ind_label)
-  
+
   if (str_detect(lab, "^count")) return(formatC(round(x), format = "f", digits = 0))
-  
-  # values are proportions (0-1) -> show %
+
+  # Proportions are stored on a 0-1 scale and displayed as percentages.
   sprintf("%.0f%%", 100 * x)
 }
 

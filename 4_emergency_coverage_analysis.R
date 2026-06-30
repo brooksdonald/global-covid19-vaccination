@@ -1,15 +1,14 @@
-
 # Calculate coverage time series from administrative data, country --------
 
-# Coverage uses cleaned cumulative administration data and caps values at 100%
+# Coverage uses cleaned cumulative administration data and caps values at 100%.
 data_cov_time_country <- data_admin_time_interp %>%
   
-  # Calculate coverage in total population
+  # Calculate coverage in total population.
   mutate(cov_tot_a1d = pmin(adm_tot_a1d_monotone_interp / pop_2021, 1),
          cov_tot_cps = pmin(adm_tot_cps_monotone_interp / pop_2021, 1),
          cov_tot_boost = pmin(adm_tot_boost_monotone_interp / pop_2021, 1),
 
-  # Apply HCW denominator-gap adjustment after cleaning observed HCW reports
+  # Apply HCW denominator-gap adjustment after cleaning observed HCW reports.
          hcw_flag = if_else(pop_hcw > adm_target_hcw, "Yes", NA_character_),
          hcw_diff = pmax(pop_hcw - adm_target_hcw, 0, na.rm = TRUE),
          adm_hcw_a1d_monotone_interp = pmin(
@@ -19,7 +18,7 @@ data_cov_time_country <- data_admin_time_interp %>%
          adm_hcw_boost_monotone_interp = pmin(
            adm_hcw_boost_monotone_interp + (hcw_diff * cov_tot_boost), pop_hcw),
   
-  # Calculate coverage in priority populations
+  # Calculate coverage in priority populations.
          cov_hcw_a1d = pmin(adm_hcw_a1d_monotone_interp / pop_hcw, 1),
          cov_hcw_cps = pmin(adm_hcw_cps_monotone_interp / pop_hcw, 1),
          cov_hcw_boost = pmin(adm_hcw_boost_monotone_interp / pop_hcw, 1),
@@ -31,7 +30,7 @@ data_cov_time_country <- data_admin_time_interp %>%
 
 # Calculate 2021-2023 coverage summary figures ----------------------------
 
-# Country-level summaries are calculated across reporting countries by month
+# Country-level summaries are calculated across reporting countries by month.
 
 # Total - global
 cov_acute_summary_all <- data_cov_time_country %>%
@@ -267,24 +266,10 @@ cov_acute_summary <- bind_rows(cov_acute_summary_all,
                names_to = c(".value", "group", "indicator"),
                names_pattern = "^(.*)_(tot|hcw|old)_(cps|boost)$")
 
-  # Possible correction for reporting-driven artifacts in med/IQR
-  # arrange(type, dimension, group, indicator, month_name) %>%
-  # group_by(type, dimension, group, indicator) %>%
-  # mutate(
-  #   avg_cov  = cummax(replace_na(avg_cov,  -Inf)),
-  #   med_cov  = cummax(replace_na(med_cov,  -Inf)),
-  #   perc_25  = cummax(replace_na(perc_25,  -Inf)),
-  #   perc_75  = cummax(replace_na(perc_75,  -Inf))
-  # ) %>%
-  # mutate(
-  #   across(c(avg_cov, med_cov, perc_25, perc_75), ~na_if(.x, -Inf))
-  # ) %>%
-  # ungroup()
-
 
 # Create end-2021 / end-2023 data frames ----------------------------------
 
-# Filter to relevant time point & select relevant variables
+# Filter to relevant time point & select relevant variables.
 data_cov_2123 <- data_cov_time_country %>%
   filter(month_name == as.Date("2021-12-01") |
            month_name == as.Date("2023-12-01")) %>%
@@ -292,7 +277,7 @@ data_cov_2123 <- data_cov_time_country %>%
          -hcw_flag,
          -adm_tar_hcw)
 
-# Filter to end-2023
+# Filter to end-2023.
 data_cov_last <- data_cov_time_country %>%
   filter(month_name == as.Date("2023-12-01")) %>%
   select(-month_name)
@@ -302,7 +287,7 @@ data_cov_last <- data_cov_time_country %>%
 
 data_cov_time_world_full <- data_cov_time_country %>%
   
-  # Summarize across all Member States
+  # Summarize across all Member States.
   filter(status_who == "Member State") %>%
   group_by(month_name) %>%
   summarize(adm_tot_td = sum(adm_tot_td_monotone_interp, na.rm = TRUE),
@@ -319,7 +304,7 @@ data_cov_time_world_full <- data_cov_time_country %>%
             adm_hcw_boost = sum(adm_hcw_boost_monotone_interp, na.rm = TRUE)) %>% 
   pivot_longer(cols = -month_name, names_to = "measure", values_to = "admin") %>%
   
-  # Assign appropriate population value per group & measure
+  # Assign appropriate population value per group & measure.
   mutate(
     pop = case_when(
       str_detect(measure, "tot_a1d") ~ pop_rep_tot_2021_a1d,
@@ -334,7 +319,7 @@ data_cov_time_world_full <- data_cov_time_country %>%
       TRUE ~ NA
       ),
     
-  # Assign friendly group & measure variables for visualization
+  # Assign friendly group & measure variables for visualization.
     group = case_when(
       str_detect(measure, "tot") ~ "Total population",
       str_detect(measure, "old") ~ "Older adults",
@@ -349,13 +334,13 @@ data_cov_time_world_full <- data_cov_time_country %>%
       TRUE ~ NA
     ),
   
-  # Calculate coverage
+  # Calculate coverage.
     coverage = case_when(
       measure != "Total doses" ~ admin / pop,
       TRUE ~ NA
     ), 
     
-    # Add type and dimension for future merge
+    # Add type and dimension for future merge.
     type = "all",
     dimension = NA) %>%
   ungroup()
@@ -365,7 +350,7 @@ data_cov_time_world_full <- data_cov_time_country %>%
 
 data_cov_time_income_full <- data_cov_time_country %>%
   
-  # Summarize across all Member States
+  # Summarize across all Member States.
   filter(status_who == "Member State",
          !is.na(income_group),
          income_group != "") %>%
@@ -387,7 +372,7 @@ data_cov_time_income_full <- data_cov_time_country %>%
                values_to = "admin") %>%
   rename(dimension = income_group) %>%
   
-  # Assign appropriate population value per group & measure    
+  # Assign appropriate population value per group & measure.
   mutate(
     pop = case_when(
       str_detect(measure, "tot_a1d") & dimension == "HIC" ~ pop_rep_tot_2021_a1d_hic,
@@ -429,7 +414,7 @@ data_cov_time_income_full <- data_cov_time_country %>%
       TRUE ~ NA
     ),
     
-    # Assign friendly group & measure variables for visualization
+    # Assign friendly group & measure variables for visualization.
     group = case_when(
       str_detect(measure, "tot") ~ "Total population",
       str_detect(measure, "old") ~ "Older adults",
@@ -444,13 +429,13 @@ data_cov_time_income_full <- data_cov_time_country %>%
       TRUE ~ NA
     ),
     
-    # Calculate coverage
+    # Calculate coverage.
     coverage = case_when(
       measure != "Total doses" ~ admin / pop,
       TRUE ~ NA
     ), 
     
-    # Add type and dimension for future merge
+    # Add type and dimension for future merge.
     type = "income") %>%
   ungroup()
 
@@ -459,7 +444,7 @@ data_cov_time_income_full <- data_cov_time_country %>%
 
 data_cov_time_region_full <- data_cov_time_country %>%
   
-  # Summarize across all Member States
+  # Summarize across all Member States.
   filter(status_who == "Member State") %>%
   group_by(month_name,
            region_who) %>%
@@ -479,7 +464,7 @@ data_cov_time_region_full <- data_cov_time_country %>%
                values_to = "admin") %>%
   rename(dimension = region_who) %>%
   
-  # Assign appropriate population value per group & measure    
+  # Assign appropriate population value per group & measure.
   mutate(
     pop = case_when(
       str_detect(measure, "tot_a1d") & dimension == "AFR" ~ pop_rep_tot_2021_a1d_afr,
@@ -539,7 +524,7 @@ data_cov_time_region_full <- data_cov_time_country %>%
       TRUE ~ NA
     ),
     
-    # Assign friendly group & measure variables for visualization
+    # Assign friendly group & measure variables for visualization.
     group = case_when(
       str_detect(measure, "tot") ~ "Total population",
       str_detect(measure, "old") ~ "Older adults",
@@ -554,13 +539,13 @@ data_cov_time_region_full <- data_cov_time_country %>%
       TRUE ~ NA
     ),
     
-    # Calculate coverage
+    # Calculate coverage.
     coverage = case_when(
       measure != "Total doses" ~ admin / pop,
       TRUE ~ NA
     ), 
     
-    # Add type and dimension for future merge
+    # Add type and dimension for future merge.
     type = "region") %>%
   ungroup()
 
@@ -569,7 +554,7 @@ data_cov_time_region_full <- data_cov_time_country %>%
 
 data_cov_time_covax_full <- data_cov_time_country %>%
   
-  # Summarize across all WHO MS & 2 REs
+  # Summarize across all WHO MS & 2 REs.
   filter(!is.na(status_covax)) %>%
   group_by(month_name,
            status_covax) %>%
@@ -589,7 +574,7 @@ data_cov_time_covax_full <- data_cov_time_country %>%
                values_to = "admin") %>%
   rename(dimension = status_covax) %>%
   
-  # Assign appropriate population value per group & measure    
+  # Assign appropriate population value per group & measure.  
   mutate(
     pop = case_when(
       str_detect(measure, "tot_a1d") & dimension == "AMC" ~ pop_rep_tot_2021_a1d_amc,
@@ -622,7 +607,7 @@ data_cov_time_covax_full <- data_cov_time_country %>%
       TRUE ~ NA
     ),
     
-    # Assign friendly group & measure variables for visualization
+    # Assign friendly group & measure variables for visualization.
     group = case_when(
       str_detect(measure, "tot") ~ "Total population",
       str_detect(measure, "old") ~ "Older adults",
@@ -637,13 +622,13 @@ data_cov_time_covax_full <- data_cov_time_country %>%
       TRUE ~ NA
     ),
     
-    # Calculate coverage
+    # Calculate coverage.
     coverage = case_when(
       measure != "Total doses" ~ admin / pop,
       TRUE ~ NA
     ), 
     
-    # Add type and dimension for future merge
+    # Add type and dimension for future merge.
     type = "covax") %>%
   ungroup()
 
@@ -764,7 +749,7 @@ data_fig_supp_2_cov_cps_priority_time <- data_cov_time_country %>%
 
 
 # Figure 3
-##  Add global figures to each category
+# Add the global total-dose trajectory to each figure category for comparison.
 data_fig_3_admin_time_world <- data_admin_time_interp %>%
   select(iso,
          month_name,
@@ -789,7 +774,7 @@ data_fig_3_admin_time_world <- data_fig_3_admin_time_world %>%
   rbind(., data_fig_3_admin_time_all_cov, data_fig_3_admin_time_all_reg) %>%
   mutate(coverage = (adm_td_tot / pop_total_2021_world) * 100)
 
-##  Create grouping figures
+# Calculate total-dose trajectories by income group, COVAX status, and region.
 data_fig_3_admin_time_income <- data_admin_time_interp %>%
   select(iso,
          month_name,
@@ -876,7 +861,7 @@ data_fig_4_cov_time_world <- data_cov_time_world_full %>%
 
 
 # Figure 5
-
+# Suppress median/IQR summaries when reporting is below 10% of the cohort maximum.
 min_reporting_fraction <- 0.10
 
 data_fig_5_cov_time_mediqr_compA_fix <- cov_acute_summary %>%

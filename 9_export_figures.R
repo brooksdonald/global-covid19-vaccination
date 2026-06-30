@@ -1,7 +1,6 @@
 # Keep ggrepel label placement deterministic across regenerated figure exports.
 label_repel_seed <- 20240629
 
-
 # Figure 1 - end-2023 coverage, violins, income group -----------------------
 
 fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>% 

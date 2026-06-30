@@ -1,9 +1,5 @@
 # Export cleaned analytic CSVs -------------------------------------------
 
-# These files expose the cleaned analysis-ready datasets underlying the
-# manuscript figures and tables. They are derived from the same objects used by
-# the primary analysis scripts.
-
 export_cleaned_csv <- function(data, filename) {
   if (isTRUE(export_outputs)) {
     write.csv(
@@ -133,7 +129,7 @@ cleaned_emergency_monthly_coverage <- bind_rows(
 
 export_cleaned_csv(
   cleaned_emergency_monthly_coverage,
-  "data_emergency_monthly_coverage.csv"
+  "data_emergency_coverage.csv"
 )
 
 
@@ -215,10 +211,10 @@ cleaned_dvr_daily <- bind_rows(
 ) %>%
   arrange(record_type, grouping_type, grouping, iso, adm_date)
 
-export_cleaned_csv(cleaned_dvr_daily, "data_dvr_daily.csv")
+export_cleaned_csv(cleaned_dvr_daily, "data_emergency_dvr.csv")
 
 
-# Routine-period 2024 uptake ----------------------------------------------
+# Post-emergency-period 2024 uptake ---------------------------------------
 
 cleaned_2024_uptake_country <- data_2024_uptake_country_audit %>%
   transmute(
@@ -274,10 +270,10 @@ cleaned_2024_uptake <- bind_rows(
 ) %>%
   arrange(record_type, grouping_type, grouping, population_group, iso)
 
-export_cleaned_csv(cleaned_2024_uptake, "data_2024_uptake.csv")
+export_cleaned_csv(cleaned_2024_uptake, "data_postemergency_uptake.csv")
 
 
-# Routine-period 2024 policy ----------------------------------------------
+# Post-emergency-period 2024 policy ---------------------------------------
 
 cleaned_2024_policy <- data_routine_policy_2024 %>%
   transmute(
@@ -290,4 +286,4 @@ cleaned_2024_policy <- data_routine_policy_2024 %>%
   ) %>%
   arrange(iso, population_group)
 
-export_cleaned_csv(cleaned_2024_policy, "data_2024_policy.csv")
+export_cleaned_csv(cleaned_2024_policy, "data_postemergency_policy.csv")

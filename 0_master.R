@@ -1,4 +1,4 @@
-# COVID-19 vaccination analysis
+# Global COVID-19 vaccination uptake analysis
 # Maintainer: BROOKS, Donald J. 
 # See README.md for manuscript and citation details
 
@@ -11,7 +11,7 @@ options(scipen = 999)
 
 # Load packages
 
-lib <- c("tidyverse", "readxl", "writexl", "lubridate", "countrycode",
+lib <- c("tidyverse", "lubridate", "countrycode",
          "data.table", "httr", "scales", "jsonlite", "ggpattern", "ggrepel", 
          "scales", "treemap", "ggtext", "ggforce", "tibble", "kableExtra", 
          "knitr", "ordering", "shadowtext", "forcats", "flextable", "officer", 
@@ -33,8 +33,7 @@ refresh_api <- FALSE
 
 # Process & design variables ----------------------------------------------
 
-# Locate the repository so the script can be run from RStudio or terminal
-
+# Locate the repository so the script can be run from IDE or terminal.
 get_project_path <- function() {
   script_arg <- grep("^--file=", commandArgs(FALSE), value = TRUE)
   if (length(script_arg) > 0) {
@@ -57,7 +56,11 @@ get_project_path <- function() {
     return(normalizePath(getwd()))
   }
 
-  stop("Cannot locate the project directory. Run source('0_master.R') from the covid_vaccination folder, or run Rscript with the path to 0_master.R.")
+  stop(
+    "Cannot locate the project directory. Run source('0_master.R') from ",
+    "the global-covid19-vaccination folder, or run Rscript with the path ",
+    "to 0_master.R."
+  )
 }
 
 path_project <- get_project_path()
@@ -100,6 +103,7 @@ figure_specs <- list(
   tall = list(width = 9, height = 11)
 )
 
+# Centralize figure export dimensions so regenerated figures use one standard.
 export_figure <- function(filename, plot, size = "wide_tall", width = NULL,
                           height = NULL, dpi = 300, path = path_save) {
   if (!isTRUE(export_outputs)) {
@@ -156,6 +160,41 @@ read_who_api_json <- function(url, cache_file) {
   fromJSON(response_text, flatten = TRUE)
 }
 
+# Convert the OData response body to the rectangular value table used here.
+odata_value_as_data_frame <- function(api_json) {
+  api_data <- as.data.frame(api_json)
+  value_columns <- startsWith(names(api_data), "value.")
+
+  if (any(value_columns)) {
+    api_data <- api_data[, value_columns, drop = FALSE]
+    names(api_data) <- sub("^value\\.", "", names(api_data))
+  }
+
+  api_data
+}
+
+# Save flattened CSV mirrors for reviewer inspection; JSON remains authoritative.
+write_api_snapshot_csv <- function(api_data, cache_file) {
+  csv_dir <- file.path(dirname(cache_file), "api_csv")
+  csv_file <- file.path(
+    csv_dir,
+    sub("\\.json$", ".csv", basename(cache_file))
+  )
+
+  dir.create(csv_dir, showWarnings = FALSE, recursive = TRUE)
+  write.csv(api_data, csv_file, row.names = FALSE, na = "")
+}
+
+# Read the WHO snapshot once and return the analysis-ready rectangular table.
+read_who_api_snapshot <- function(url, cache_file) {
+  api_json <- read_who_api_json(url = url, cache_file = cache_file)
+  api_data <- odata_value_as_data_frame(api_json)
+
+  write_api_snapshot_csv(api_data, cache_file)
+
+  api_data
+}
+
 # Theme-related settings
 theme_master <- theme_test() +
   theme(
@@ -182,7 +221,7 @@ levels_indicator <- c("At least one dose", "Complete primary series",
                       "At least one booster dose")
 
 # Color-related settings
-source(file.path(path_project, "a_design specifications.R"))
+source(file.path(path_project, "helper_design_specifications.R"))
 
 palette_3 <- c(color_who_cat_base_1, color_who_cat_base_2,
                    color_who_cat_base_3)
@@ -239,63 +278,119 @@ panel_tag_theme <- theme(
 
 # Extract data ------------------------------------------------------------
 
-# Load entity & population details
-raw_entity_details <- data.frame(
-  read.csv(file.path(path_input, "data_export_WIISE_REF_COUNTRIES.csv")))
+# Load country/entity reference data.
+raw_entity_details <- read_who_api_snapshot(
+  url = paste0(
+    "https://xmart-api-public.who.int/WIISE/REF_COUNTRIES",
+    "?$select=CODE,WHOREGIONC,WBINCOMESTATUS,WHO_LEGAL_STATUS_TITLE,COVAX"
+  ),
+  cache_file = file.path(
+    path_input,
+    "data_REF_COUNTRIES.json"
+  )
+)
 
 raw_adhoc <- data.frame(
-  read_excel(file.path(path_input, "base_adhoc.xlsx"), 
-             sheet = "data"))
+  read.csv(file.path(path_input, "base_adhoc.csv"),
+           stringsAsFactors = FALSE,
+           na.strings = c("", "NA")))
 
-raw_population <- data.frame(
-  read.csv(file.path(path_input, "data_export_WIISE_MT_REF_POPULATIONS.csv")))
+# Load 2021 and 2024 population data.
+raw_population <- read_who_api_snapshot(
+  url = paste0(
+    "https://xmart-api-public.who.int/WIISE/MT_REF_POPULATIONS",
+    "?$select=COUNTRY,COUNTRY_NAME,WHO_REGION,YEAR,GENDER,AGE_GROUP,",
+    "SOURCE,POP_TYPE,VALUE",
+    "&$filter=(YEAR%20eq%202021%20or%20YEAR%20eq%202024)%20and%20",
+    "GENDER%20eq%20%27BOTH%27"
+  ),
+  cache_file = file.path(
+    path_input,
+    "data_MT_REF_POPULATIONS.json"
+  )
+)
 
-# Load 2024 policy data
-raw_policy_wide <- data.frame(
-  read_excel(file.path(path_input, "output_new.xlsx"),
-             sheet = "policy_country_wide"))
+# Load annual 2024 routine policy data.
+raw_policy_annual <- read_who_api_snapshot(
+  url = paste0(
+    "https://xmart-api-public.who.int/WIISE/AD_INDICATORS",
+    "?$select=COUNTRY,COUNTRY__CODE,YEAR,INDCODE,DIMENSION2,VALUE,SOURCE",
+    "&$filter=YEAR%20eq%202024%20and%20(",
+    "INDCODE__CODE%20eq%20%27POLICY_VACCINATION%27%20or%20",
+    "INDCODE__CODE%20eq%20%27POLICY_REVACCINATION%27%20or%20",
+    "INDCODE__CODE%20eq%20%27POLICY_VACCINATION_COM%27%20or%20",
+    "INDCODE__CODE%20eq%20%27POLICY_INTERVAL%27)"
+  ),
+  cache_file = file.path(
+    path_input,
+    "data_AD_INDICATORS.json"
+  )
+)
 
-# The 2024 uptake analysis is reconstructed from frozen source extracts in
-# 7_routine coverage analysis.R. output_new.xlsx is retained here only as the
-# source of the 2024 policy data above.
+# Load annual 2024 routine uptake data.
+raw_routine_uptake_annual <- read_who_api_snapshot(
+  url = paste0(
+    "https://xmart-api-public.who.int/WIISE/AD_COVERAGES",
+    "?$select=COUNTRY,COUNTRY__CODE,YEAR,COVERAGE_CATEGORY,VACCINECODE,",
+    "TARGETDEFINITION,SOURCE,DOSES",
+    "&$filter=COVERAGE_CATEGORY%20eq%20%27ADMIN%27%20and%20",
+    "VACCINECODE%20eq%20%27COVID19%27%20and%20YEAR%20eq%202024"
+  ),
+  cache_file = file.path(
+    path_input,
+    "data_AD_COVERAGES.json"
+  )
+)
 
-# Load uncleaned risk group uptake data
-raw_target_json <- read_who_api_json(
+# Load quarterly 2024 routine uptake data.
+raw_routine_uptake_quarterly <- read_who_api_snapshot(
+  url = paste0(
+    "https://xmart-api-public.who.int/WIISE/COV_UPTAKE",
+    "?$select=COUNTRY,COUNTRY__CODE,YEAR,REPORTING_PERIOD,SOURCE,",
+    "AGEGROUP,TARGET_GROUP,N_VACC_DOSE1",
+    "&$filter=(YEAR%20eq%202024%20and%20(",
+    "REPORTING_PERIOD%20eq%20%274%27%20or%20",
+    "REPORTING_PERIOD%20eq%20%277%27%20or%20",
+    "REPORTING_PERIOD%20eq%20%2710%27))%20or%20",
+    "(YEAR%20eq%202025%20and%20REPORTING_PERIOD%20eq%20%271%27)"
+  ),
+  cache_file = file.path(path_input,
+                         "data_COV_UPTAKE.json")
+)
+
+# Load 2021-2023 risk group uptake data.
+base_target <- read_who_api_snapshot(
   url = "https://xmart-api-public.who.int/WIISE/MT_COV_UPTAKE_TARGETGROUP_LONG",
   cache_file = file.path(path_input,
-                         "2026-06-12_MT_COV_UPTAKE_TARGETGROUP_LONG.json")
+                         "data_MT_COV_UPTAKE_TARGETGROUP_LONG.json")
 )
-base_target <- as.data.frame(raw_target_json)
-names(base_target) <- substring(names(base_target), 7)
 
-# Load uncleaned total pop. uptake data
-raw_weekly_json <- read_who_api_json(
+# Load 2021-2023 total population uptake data.
+base_total <- read_who_api_snapshot(
   url = "https://xmart-api-public.who.int/WIISE/COV_UPTAKE_WEEKLY",
   cache_file = file.path(path_input,
-                         "2026-06-12_COV_UPTAKE_WEEKLY.json")
+                         "data_COV_UPTAKE_WEEKLY.json")
 )
-base_total <- as.data.frame(raw_weekly_json)
-names(base_total) <- substring(names(base_total), 7)
 
 
 # Load analyses -----------------------------------------------------------
 
 source(file.path(path_project, "1_entity_pop.R"))
-source(file.path(path_project, "2_data cleaning.R"))
-source(file.path(path_project, "3_static values.R"))
-source(file.path(path_project, "4_acute coverage analysis.R"))
-source(file.path(path_project, "5_acute daily vaccination rate analysis.R"))
-source(file.path(path_project, "6_routine policy analysis.R"))
-source(file.path(path_project, "7_routine coverage analysis.R"))
-source(file.path(path_project, "8_reporting analysis.R"))
+source(file.path(path_project, "2_data_cleaning.R"))
+source(file.path(path_project, "3_static_values.R"))
+source(file.path(path_project, "4_emergency_coverage_analysis.R"))
+source(file.path(path_project, "5_emergency_dvr_analysis.R"))
+source(file.path(path_project, "6_postemergency_policy_analysis.R"))
+source(file.path(path_project, "7_postemergency_uptake_analysis.R"))
+source(file.path(path_project, "8_reporting_analysis.R"))
 
 
 
 # Create figures, tables, and cleaned CSV exports -------------------------
 
-source(file.path(path_project, "9_figures.R"))
-source(file.path(path_project, "10_tables.R"))
-source(file.path(path_project, "11_cleaned output exports.R"))
+source(file.path(path_project, "9_export_figures.R"))
+source(file.path(path_project, "10_export_tables.R"))
+source(file.path(path_project, "11_export_data.R"))
 
 
 # End ---------------------------------------------------------------------

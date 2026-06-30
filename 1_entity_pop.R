@@ -1,7 +1,6 @@
-
 # Entity details ----------------------------------------------------------
 
-# Select, rename & modify relevant variables
+# Select, rename & modify relevant variables.
 base_entity <- raw_entity_details %>%
   transmute(iso = CODE,
             region_who = WHOREGIONC,
@@ -26,12 +25,12 @@ base_entity <- raw_entity_details %>%
 
 # Adhoc details -----------------------------------------------------------
 
-# Select, rename & modify relevant variables
+# Select, rename & modify relevant variables.
 base_adhoc <- raw_adhoc %>%
   transmute(iso = iso,
             pol_old = pol_old,
             pol_old_source = pol_old_source,
-            date_intro = min_vx_rollout_date,
+            date_intro = as.Date(min_vx_rollout_date),
             adm_tar_hcw = adm_tar_hcw,
             adm_tar_hcw_wpro = adm_tar_hcw_wpro,
             pop_hcw = pop_hcw)
@@ -39,8 +38,12 @@ base_adhoc <- raw_adhoc %>%
 
 # Population estimates ----------------------------------------------------
 
-# Isolate required variables from raw data
+# Isolate required variables from raw data.
 raw_population_select <- raw_population %>%
+  filter(
+    YEAR %in% c(2021, 2024),
+    GENDER == "BOTH"
+  ) %>%
   transmute(
     iso = COUNTRY,
     year = YEAR,
@@ -48,7 +51,7 @@ raw_population_select <- raw_population %>%
     value = VALUE
   )
 
-# Prepare 2021 / 2024 total population estimates
+# Prepare 2021 / 2024 total population estimates.
 pop_tot <- raw_population_select %>%
   filter(group_age == "ALL") %>%
   select(iso,
@@ -58,7 +61,7 @@ pop_tot <- raw_population_select %>%
               values_from = value,
               names_prefix = "pop_")
 
-# Prepare 2021 / 2024 older adult population estimates
+# Prepare 2021 / 2024 older adult population estimates.
 cuts <- c(45, 50, 55, 60, 65, 70, 75, 80)
 
 pop_old <- raw_population_select %>%
@@ -107,7 +110,7 @@ pop_old <- raw_population_select %>%
   ))
 
 
-# Consolidate total and older adult population estimates
+# Consolidate total and older adult population estimates.
 base_population <- pop_tot %>%
   left_join(pop_old %>% select(iso, pop_2021_old, pop_2024_old), by = "iso") %>%
   arrange(iso)
@@ -115,7 +118,7 @@ base_population <- pop_tot %>%
 
 # Combine -----------------------------------------------------------------
 
-# Merge entity & adhoc details and population dataframes
+# Merge entity & adhoc details and population dataframes.
 entity_pop <- base_entity %>%
   left_join(., base_adhoc, by = "iso") %>%
   left_join(., base_population, by = "iso") %>%
