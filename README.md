@@ -41,16 +41,16 @@ extracts.
 
 Local input files:
 
-- `input/data_REF_COUNTRIES.json`: Cached WHO API extract for the `REF_COUNTRIES` fields used for country/entity metadata, WHO region, income group, WHO legal status, and COVAX participation category.
+- `input/260630_data_REF_COUNTRIES.json`: Cached WHO API extract for the `REF_COUNTRIES` fields used for country/entity metadata, WHO region, income group, WHO legal status, and COVAX participation category.
 - `input/base_adhoc.csv`: Manually curated country-level fields used by the analysis, including older adult policy age thresholds, introduction dates, health and care worker denominator information, and older-adult threshold provenance.
 - `input/data_corrections.csv`: Central audit log for manual exclusions, replacements, reporting-basis decisions, and documented set-missing corrections.
-- `input/data_MT_REF_POPULATIONS.json`: Cached WHO API extract for population denominators, filtered to 2021 and 2024 both-sex population estimates.
-- `input/data_AD_INDICATORS.json`: Cached WHO API extract for the `AD_INDICATORS` records used in the 2024 routine vaccination policy analysis, filtered to the 2024 COVID-19 vaccination policy indicators.
-- `input/data_AD_COVERAGES.json`: Cached WHO API extract for the `AD_COVERAGES` records used in the 2024 routine priority-group uptake analysis, filtered to administrative COVID-19 coverage records for 2024.
-- `input/data_COV_UPTAKE.json`: Cached WHO API extract for the `COV_UPTAKE` columns and periods used in the 2024 routine priority-group uptake analysis.
-- `input/data_MT_COV_UPTAKE_TARGETGROUP_LONG.json`: Cached WHO API extract for target-group uptake data.
-- `input/data_COV_UPTAKE_WEEKLY.json`: Cached WHO API extract for weekly total-population uptake data.
-- `input/api_csv/*.csv`: Reviewer-friendly CSV mirrors of the cached WHO API
+- `input/260630_data_MT_REF_POPULATIONS.json`: Cached WHO API extract for population denominators, filtered to 2021 and 2024 both-sex population estimates.
+- `input/260630_data_AD_INDICATORS.json`: Cached WHO API extract for the `AD_INDICATORS` records used in the 2024 routine vaccination policy analysis, filtered to the 2024 COVID-19 vaccination policy indicators.
+- `input/260630_data_AD_COVERAGES.json`: Cached WHO API extract for the `AD_COVERAGES` records used in the 2024 routine priority-group uptake analysis, filtered to administrative COVID-19 coverage records for 2024.
+- `input/260630_data_COV_UPTAKE.json`: Cached WHO API extract for the `COV_UPTAKE` columns and periods used in the 2024 routine priority-group uptake analysis.
+- `input/260630_data_MT_COV_UPTAKE_TARGETGROUP_LONG.json`: Cached WHO API extract for target-group uptake data.
+- `input/260630_data_COV_UPTAKE_WEEKLY.json`: Cached WHO API extract for weekly total-population uptake data.
+- `input/api_csv/260630_*.csv`: Reviewer-friendly CSV mirrors of the cached WHO API
   JSON snapshots. These files contain the flattened OData `value` tables and
   are named to match the XMart API table names and are not used as analysis
   inputs.
@@ -66,7 +66,9 @@ The cached WHO API snapshot files correspond to:
 - `https://xmart-api-public.who.int/WIISE/COV_UPTAKE_WEEKLY`
 
 By default, `0_master.R` reads the cached JSON files rather than calling the live
-API, and writes flattened CSV mirrors to `input/api_csv/` for inspection.
+API, and writes flattened CSV mirrors to `input/api_csv/` for inspection. Cached
+WHO API snapshot filenames are prefixed with the refresh date in `YYMMDD` format;
+the committed snapshot prefix `260630` corresponds to a 2026-06-30 refresh.
 Country and grouping metadata are prepared from the scoped `REF_COUNTRIES`
 API snapshot in `1_entity_pop.R` and `8_reporting_analysis.R`; the stored
 snapshot includes only the fields used by this analysis. Population denominators

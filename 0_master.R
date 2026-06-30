@@ -286,7 +286,7 @@ raw_entity_details <- read_who_api_snapshot(
   ),
   cache_file = file.path(
     path_input,
-    "data_REF_COUNTRIES.json"
+    "260630_data_REF_COUNTRIES.json"
   )
 )
 
@@ -306,7 +306,7 @@ raw_population <- read_who_api_snapshot(
   ),
   cache_file = file.path(
     path_input,
-    "data_MT_REF_POPULATIONS.json"
+    "260630_data_MT_REF_POPULATIONS.json"
   )
 )
 
@@ -323,7 +323,7 @@ raw_policy_annual <- read_who_api_snapshot(
   ),
   cache_file = file.path(
     path_input,
-    "data_AD_INDICATORS.json"
+    "260630_data_AD_INDICATORS.json"
   )
 )
 
@@ -338,7 +338,7 @@ raw_routine_uptake_annual <- read_who_api_snapshot(
   ),
   cache_file = file.path(
     path_input,
-    "data_AD_COVERAGES.json"
+    "260630_data_AD_COVERAGES.json"
   )
 )
 
@@ -355,21 +355,21 @@ raw_routine_uptake_quarterly <- read_who_api_snapshot(
     "(YEAR%20eq%202025%20and%20REPORTING_PERIOD%20eq%20%271%27)"
   ),
   cache_file = file.path(path_input,
-                         "data_COV_UPTAKE.json")
+                         "260630_data_COV_UPTAKE.json")
 )
 
 # Load 2021-2023 risk group uptake data.
 base_target <- read_who_api_snapshot(
   url = "https://xmart-api-public.who.int/WIISE/MT_COV_UPTAKE_TARGETGROUP_LONG",
   cache_file = file.path(path_input,
-                         "data_MT_COV_UPTAKE_TARGETGROUP_LONG.json")
+                         "260630_data_MT_COV_UPTAKE_TARGETGROUP_LONG.json")
 )
 
 # Load 2021-2023 total population uptake data.
 base_total <- read_who_api_snapshot(
   url = "https://xmart-api-public.who.int/WIISE/COV_UPTAKE_WEEKLY",
   cache_file = file.path(path_input,
-                         "data_COV_UPTAKE_WEEKLY.json")
+                         "260630_data_COV_UPTAKE_WEEKLY.json")
 )
 
 
