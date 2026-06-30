@@ -20,7 +20,7 @@ vaccination policy category.
 - `4_emergency_coverage_analysis.R`: 2021-2023 coverage analysis.
 - `5_emergency_dvr_analysis.R`: Daily vaccination rate analysis.
 - `6_postemergency_policy_analysis.R`: 2024 vaccination policy analysis.
-- `7_postemergency_uptake_analysis.R`: 2024 routine coverage analysis.
+- `7_postemergency_uptake_analysis.R`: 2024 post-emergency uptake analysis.
 - `8_reporting_analysis.R`: Reporting completeness analysis.
 - `9_export_figures.R`: Figure generation and export.
 - `10_export_tables.R`: Table generation and export.
@@ -41,15 +41,32 @@ extracts.
 
 Local input files:
 
-- `input/260630_data_REF_COUNTRIES.json`: Cached WHO API extract for the `REF_COUNTRIES` fields used for country/entity metadata, WHO region, income group, WHO legal status, and COVAX participation category.
-- `input/base_adhoc.csv`: Manually curated country-level fields used by the analysis, including older adult policy age thresholds, introduction dates, health and care worker denominator information, and older-adult threshold provenance.
-- `input/data_corrections.csv`: Central audit log for manual exclusions, replacements, reporting-basis decisions, and documented set-missing corrections.
-- `input/260630_data_MT_REF_POPULATIONS.json`: Cached WHO API extract for population denominators, filtered to 2021 and 2024 both-sex population estimates.
-- `input/260630_data_AD_INDICATORS.json`: Cached WHO API extract for the `AD_INDICATORS` records used in the 2024 routine vaccination policy analysis, filtered to the 2024 COVID-19 vaccination policy indicators.
-- `input/260630_data_AD_COVERAGES.json`: Cached WHO API extract for the `AD_COVERAGES` records used in the 2024 routine priority-group uptake analysis, filtered to administrative COVID-19 coverage records for 2024.
-- `input/260630_data_COV_UPTAKE.json`: Cached WHO API extract for the `COV_UPTAKE` columns and periods used in the 2024 routine priority-group uptake analysis.
-- `input/260630_data_MT_COV_UPTAKE_TARGETGROUP_LONG.json`: Cached WHO API extract for target-group uptake data.
-- `input/260630_data_COV_UPTAKE_WEEKLY.json`: Cached WHO API extract for weekly total-population uptake data.
+- `input/260630_data_REF_COUNTRIES.json`: Cached WHO API extract for the
+  `REF_COUNTRIES` fields used for country/entity metadata, WHO region, income
+  group, WHO legal status, and COVAX participation category.
+- `input/base_adhoc.csv`: Manually curated country-level fields used by the
+  analysis, including older adult policy age thresholds, introduction dates,
+  health and care worker denominator information, and older adult threshold
+  provenance.
+- `input/data_corrections.csv`: Central audit log for manual exclusions,
+  replacements, reporting-basis decisions, and documented set-missing
+  corrections.
+- `input/260630_data_MT_REF_POPULATIONS.json`: Cached WHO API extract for
+  population denominators, filtered to 2021 and 2024 both-sex population
+  estimates.
+- `input/260630_data_AD_INDICATORS.json`: Cached WHO API extract for the
+  `AD_INDICATORS` records used in the 2024 post-emergency vaccination policy
+  analysis, filtered to the 2024 COVID-19 vaccination policy indicators.
+- `input/260630_data_AD_COVERAGES.json`: Cached WHO API extract for the
+  `AD_COVERAGES` records used in the 2024 post-emergency priority group uptake
+  analysis, filtered to administrative COVID-19 coverage records for 2024.
+- `input/260630_data_COV_UPTAKE.json`: Cached WHO API extract for the
+  `COV_UPTAKE` columns and periods used in the 2024 post-emergency priority
+  group uptake analysis.
+- `input/260630_data_MT_COV_UPTAKE_TARGETGROUP_LONG.json`: Cached WHO API
+  extract for 2021-2023 emergency target group uptake data.
+- `input/260630_data_COV_UPTAKE_WEEKLY.json`: Cached WHO API extract for
+  2021-2023 emergency weekly total population uptake data.
 - `input/api_csv/260630_*.csv`: Reviewer-friendly CSV mirrors of the cached WHO API
   JSON snapshots. These files contain the flattened OData `value` tables and
   are named to match the XMart API table names and are not used as analysis
@@ -69,28 +86,38 @@ By default, `0_master.R` reads the cached JSON files rather than calling the liv
 API, and writes flattened CSV mirrors to `input/api_csv/` for inspection. Cached
 WHO API snapshot filenames are prefixed with the refresh date in `YYMMDD` format;
 the committed snapshot prefix `260630` corresponds to a 2026-06-30 refresh.
-Country and grouping metadata are prepared from the scoped `REF_COUNTRIES`
-API snapshot in `1_entity_pop.R` and `8_reporting_analysis.R`; the stored
-snapshot includes only the fields used by this analysis. Population denominators
-are prepared from the filtered `MT_REF_POPULATIONS`
-API snapshot in `1_entity_pop.R`; the stored snapshot is filtered to
-`YEAR == 2021` or `YEAR == 2024`, and `GENDER == "BOTH"`.
-Total-population monthly administrative uptake values are prepared from
-`COV_UPTAKE_WEEKLY` in `2_data_cleaning.R` by selecting the last available
-weekly report in each country-month and assigning it to the first day of that
-month. Target-group monthly administrative uptake values for older adults and
-health and care workers are prepared from `MT_COV_UPTAKE_TARGETGROUP_LONG` in
-the same script. This mirrors the month representation used in CVAP's coverage
-workflow, where monthly periods are stored as first-of-month dates for R
-processing. Routine 2024 vaccination policy is prepared from the filtered
-`AD_INDICATORS` API snapshot in `6_postemergency_policy_analysis.R`; the stored
-snapshot is filtered to `YEAR == 2024` and `INDCODE` values
-`POLICY_VACCINATION`, `POLICY_REVACCINATION`, `POLICY_VACCINATION_COM`, and
-`POLICY_INTERVAL`. Routine 2024 priority-group uptake is prepared from filtered
-`AD_COVERAGES` and `COV_UPTAKE` API snapshots in
-`7_postemergency_uptake_analysis.R`; the stored `AD_COVERAGES` snapshot is filtered
-to `COVERAGE_CATEGORY == "ADMIN"`, `VACCINECODE == "COVID19"`, and
-`YEAR == 2024`.
+
+Country, grouping, and denominator inputs:
+
+- Country and grouping metadata are prepared from the scoped `REF_COUNTRIES`
+  API snapshot in `1_entity_pop.R` and `8_reporting_analysis.R`. The stored
+  snapshot includes only the fields used by this analysis.
+- Population denominators are prepared from the filtered `MT_REF_POPULATIONS`
+  API snapshot in `1_entity_pop.R`. The stored snapshot is filtered to
+  `YEAR == 2021` or `YEAR == 2024`, and `GENDER == "BOTH"`.
+
+Emergency period uptake inputs, 2021-2023:
+
+- Total population monthly administrative uptake values are prepared from
+  `COV_UPTAKE_WEEKLY` in `2_data_cleaning.R` by selecting the last available
+  weekly report in each country-month and assigning it to the first day of that
+  month.
+- Target group monthly administrative uptake values for older adults and health
+  and care workers are prepared from `MT_COV_UPTAKE_TARGETGROUP_LONG` in the
+  same script.
+- Monthly periods are stored as first-of-month dates for R processing, mirroring
+  the month representation used in CVAP's coverage workflow.
+
+Post-emergency inputs, 2024:
+
+- Vaccination policy is prepared from the filtered `AD_INDICATORS` API snapshot
+  in `6_postemergency_policy_analysis.R`. The stored snapshot is filtered to
+  `YEAR == 2024` and `INDCODE` values `POLICY_VACCINATION`,
+  `POLICY_REVACCINATION`, `POLICY_VACCINATION_COM`, and `POLICY_INTERVAL`.
+- Priority group uptake is prepared from filtered `AD_COVERAGES` and
+  `COV_UPTAKE` API snapshots in `7_postemergency_uptake_analysis.R`. The stored
+  `AD_COVERAGES` snapshot is filtered to `COVERAGE_CATEGORY == "ADMIN"`,
+  `VACCINECODE == "COVID19"`, and `YEAR == 2024`.
 
 To refresh these snapshots from the live API, set `refresh_api <- TRUE` near the
 top of `0_master.R` before running the script. Refreshing the API snapshots may
@@ -200,12 +227,13 @@ Supplementary and additional outputs:
   `REF_COUNTRIES` API snapshot.
 - Population denominators use a committed filtered
   `MT_REF_POPULATIONS` API snapshot.
-- Total-population, target-group, and daily vaccination rate analyses are
+- Total population, target group, and daily vaccination rate analyses are
   prepared from committed WHO API snapshots.
 - Cleaned analytic CSV exports are written from the same in-memory objects used
   to generate the manuscript figures and tables.
-- The 2024 policy and priority-group uptake analyses use committed filtered
-  `AD_INDICATORS`, `AD_COVERAGES`, and `COV_UPTAKE` API snapshots.
+- The 2024 post-emergency policy and priority group uptake analyses use
+  committed filtered `AD_INDICATORS`, `AD_COVERAGES`, and `COV_UPTAKE` API
+  snapshots.
 - Active input files are listed in the Data Sources section above.
 - Administrative uptake data cleaning is implemented locally in this repository
   to make the exact analytic workflow reproducible for this manuscript. The
