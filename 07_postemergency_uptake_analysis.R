@@ -787,10 +787,10 @@ data_tab_2_uptake_2024 <- raw_data_post_final %>%
     ),
     indicator = case_when(
       grepl("count", indicator, ignore.case = TRUE) ~
-        "Count of end-of-year reporting MS",
-      grepl("cov", indicator, ignore.case = TRUE) ~ "Uptake (%) among reporting MS",
+        "Count of end-of-year reporting countries",
+      grepl("cov", indicator, ignore.case = TRUE) ~ "Uptake (%) among reporting countries",
       grepl("prop", indicator, ignore.case = TRUE) ~
-        "Proportion of grouping population in reporting MS",
+        "Proportion of grouping population in reporting countries",
       TRUE ~ NA_character_
     )
   )

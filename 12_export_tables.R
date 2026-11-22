@@ -383,19 +383,19 @@ data_tab_s4_reporting_2024 <- data_2024_uptake_sensitivity %>%
 
 tab_s4_reporting_2024 <- flextable(data_tab_s4_reporting_2024) %>%
   set_header_labels(
-    population = "Population",
-    countries_end_year = "Count of end-of-year reporting MS",
-    population_end_year = "Proportion of grouping population in reporting MS",
-    uptake_end_year = "Uptake (%) among reporting MS",
-    countries_quarterly_only = "Count of additional MS with quarterly reports only",
-    population_combined = "Proportion of grouping population in reporting MS",
-    uptake_combined = "Uptake (%) among reporting MS",
+    population = "Pop.",
+    countries_end_year = "Count of end-of-year reporting countries",
+    population_end_year = "Prop. of grouping pop. in reporting countries",
+    uptake_end_year = "Uptake (%) among reporting countries",
+    countries_quarterly_only = "Count of additional countries with quarterly reports only",
+    population_combined = "Prop. of grouping pop. in reporting countries",
+    uptake_combined = "Uptake (%) among reporting countries",
     difference_pp = "Uptake",
-    population_difference_pp = "Population in reporting MS"
+    population_difference_pp = "Pop. in reporting countries"
   ) %>%
   add_header_row(
-    values = c("Population", "End-of-year reporting MS",
-               "End-of-year and quarterly\nreporting MS", "Difference (pp)"),
+    values = c("Pop.", "End-of-year reporting countries",
+               "End-of-year and quarterly\nreporting countries", "Difference (pp)"),
     colwidths = c(1, 3, 3, 2)
   ) %>%
   merge_v(j = "population", part = "header") %>%

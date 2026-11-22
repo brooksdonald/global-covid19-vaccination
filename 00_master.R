@@ -273,8 +273,8 @@ label_axis_admin_per100 <- "Doses administered (per 100 population)"
 label_axis_daily_rate <- "Doses administered per 100 population per day"
 label_axis_income <- "Income group"
 label_axis_date <- "Date"
-label_axis_member_states_n <- "Number of WHO Member States"
-label_axis_member_states_pct <- "Percentage of WHO Member States"
+label_axis_reporting_countries_n <- "Number of reporting countries"
+label_axis_countries_pct <- "Percentage of countries"
 label_legend_income <- "Income group"
 
 panel_tag_theme <- theme(

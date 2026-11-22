@@ -422,7 +422,7 @@ fig_6_policy_2024_all_compA <- data_fig_6_policy_2024_all_compA %>%
   scale_fill_manual(values = pal_policy, breaks = levels_policy_a,
                     labels = levels_policy_a, drop = FALSE) +
   scale_x_continuous(expand = expansion(mult = c(0, 0.10))) +
-  labs(x = label_axis_member_states_n, y = NULL, fill = NULL) +
+  labs(x = label_axis_reporting_countries_n, y = NULL, fill = NULL) +
   theme_fig6 +
   theme(
     legend.position = "none",
@@ -442,7 +442,7 @@ fig_6_policy_2024_all_compB <- data_fig_6_policy_2024_all_compB %>%
   facet_wrap(~ group, ncol = 2) +
   scale_fill_manual(values = pal_policy, breaks = levels_policy_b, drop = FALSE) +
   scale_x_continuous(limits = c(0, 100),expand = expansion(mult = c(0, 0.02))) +
-  labs(x = paste0(label_axis_member_states_pct, " (within income group)"),
+  labs(x = paste0(label_axis_countries_pct, " (within income group)"),
        y = NULL, fill = NULL) +
   theme_fig6 +
   theme(legend.position = "none",
