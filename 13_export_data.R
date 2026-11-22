@@ -1,5 +1,5 @@
 # Export analytical data for figures and tables.
-# Run through 0_master.R after coverage, rate and policy calculations.
+# Run through 00_master.R after coverage, rate and policy calculations.
 
 # Emergency-period monthly coverage ---------------------------------------
 

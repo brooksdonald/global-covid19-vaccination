@@ -1,5 +1,5 @@
 # Static denominators used by the coverage, daily rate and reporting analyses
-# Run through 0_master.R after uptake preparation and reconstruction.
+# Run through 00_master.R after uptake preparation and reconstruction.
 
 # 1. Define country membership for each aggregate -------------------------
 
@@ -33,7 +33,7 @@ population_all <- country_groupings %>%
 
 # Reporting cohorts are fixed using availability at December 2023 after
 # reconstruction. HCW availability is assessed before the denominator gap
-# adjustment in 4_emergency_coverage_analysis.R.
+# adjustment in 04_emergency_coverage_analysis.R.
 reporting_population_country <- data_admin_last %>%
   select(iso, pop_2021, pop_2021_old, pop_hcw,
          adm_tot_td_monotone_interp,

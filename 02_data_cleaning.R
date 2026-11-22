@@ -1,6 +1,6 @@
 # Administrative uptake preparation, treatment and reconstruction
 # Maintainer: BROOKS, Donald J.
-# Run through 0_master.R. Source reports remain separate from reconstructed estimates.
+# Run through 00_master.R. Source reports remain separate from reconstructed estimates.
 
 # 1. Stage submitted reports ----------------------------------------------
 
@@ -278,7 +278,7 @@ data_admin_time_reconstructed <- data_admin_time_mt %>%
   left_join(priority_reconstructed, by = c("iso", "month_name"))
 
 # Cap reconstructed older adult counts before coverage is calculated.
-# Retain uncapped HCW counts for adjustment and capping in 4_emergency_coverage_analysis.R.
+# Retain uncapped HCW counts for adjustment and capping in 04_emergency_coverage_analysis.R.
 data_admin_time_interp <- data_admin_time_reconstructed %>%
   mutate(
     across(all_of(paste0(vars_priority[1:3], "_monotone_interp")),

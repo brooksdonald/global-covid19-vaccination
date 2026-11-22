@@ -1,5 +1,5 @@
 # Sensitivity analyses
-# Run through 0_master.R after the primary analyses.
+# Run through 00_master.R after the primary analyses.
 
 # 1. Compare adjusted and unadjusted HCW coverage, 2021-2023 ---------------
 

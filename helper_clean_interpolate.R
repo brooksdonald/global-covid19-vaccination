@@ -1,6 +1,6 @@
 # Reconstruction of treated vaccination counts at supplied dates
 # Maintainer: BROOKS, Donald J.
-# Run through 0_master.R.
+# Run through 00_master.R.
 
 # 1. Define the programme zero date for count reconstruction ----
 

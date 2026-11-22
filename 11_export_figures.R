@@ -62,7 +62,7 @@ fig_1_end2023_coverage
 
 # Export
 export_figure(
-  filename = "fig_1_end2023_coverage.jpg",
+  filename = "fig_1_end2023_coverage",
   plot = fig_1_end2023_coverage,
   width = 11,
   height = 12
@@ -322,7 +322,7 @@ fig_2_emergency_coverage_time
 
 # Export
 export_figure(
-  filename = "fig_2_emergency_coverage_time.jpg",
+  filename = "fig_2_emergency_coverage_time",
   plot = fig_2_emergency_coverage_time,
   width = 11,
   height = 13
@@ -391,7 +391,7 @@ fig_5_dvr_summary
 
 # Export
 export_figure(
-  filename = "fig_3_dvr_summary.jpg",
+  filename = "fig_3_dvr_summary",
   plot = fig_5_dvr_summary,
   size = "wide_tall"
 )
@@ -505,7 +505,7 @@ fig_6_policy_2024_all
 
 # Export
 export_figure(
-  filename = "fig_4_policy_2024_all.jpg",
+  filename = "fig_4_policy_2024_all",
   plot = fig_6_policy_2024_all,
   size = "double_wide"
 )
@@ -736,7 +736,7 @@ fig_supp_1_reporting <- (fig_supp_1_reporting_compA / fig_supp_1_reporting_compB
 fig_supp_1_reporting
 
 export_figure(
-  filename = "fig_supp_1_reporting.jpg",
+  filename = "fig_supp_1_reporting",
   plot = fig_supp_1_reporting,
   width = 11,
   height = 11
@@ -790,7 +790,7 @@ fig_supp_2_cov_cps_priority_time
 
 # Export
 export_figure(
-  filename = "fig_supp_2_cov_cps_priority_time.jpg",
+  filename = "fig_supp_2_cov_cps_priority_time",
   plot = fig_supp_2_cov_cps_priority_time,
   size = "extra_wide"
 )
@@ -840,7 +840,7 @@ fig_supp_3_cov_time_weight_all
 
 # Export
 export_figure(
-  filename = "fig_supp_3_cov_time_weight_all.jpg",
+  filename = "fig_supp_3_cov_time_weight_all",
   plot = fig_supp_3_cov_time_weight_all,
   size = "wide_tall"
 )
@@ -884,7 +884,7 @@ fig_supp_4_cov_mediqr_all
 
 # Export
 export_figure(
-  filename = "fig_supp_4_cov_mediqr_all.jpg",
+  filename = "fig_supp_4_cov_mediqr_all",
   plot = fig_supp_4_cov_mediqr_all,
   size = "wide_tall"
 )
@@ -957,7 +957,7 @@ fig_supp_5_dvr_time_increg
 
 # Export
 export_figure(
-  filename = "fig_supp_5_dvr_time_increg.jpg",
+  filename = "fig_supp_5_dvr_time_increg",
   plot = fig_supp_5_dvr_time_increg,
   size = "wide_tall"
 )
@@ -1076,7 +1076,5 @@ fig_supp_6_hcw_adjustment <- (hcw_coverage / hcw_scatter) +
   plot_annotation(tag_levels = "a", theme = panel_tag_theme) &
   panel_tag_theme
 
-export_figure("fig_supp_6_hcw_adjustment.jpg", fig_supp_6_hcw_adjustment,
+export_figure("fig_supp_6_hcw_adjustment", fig_supp_6_hcw_adjustment,
               width = 7.25, height = 7.5, dpi = 450)
-export_figure("fig_supp_6_hcw_adjustment.pdf", fig_supp_6_hcw_adjustment,
-              width = 7.25, height = 7.5)

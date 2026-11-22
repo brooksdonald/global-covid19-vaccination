@@ -1,6 +1,6 @@
 # Check reported values and reconstructed estimates
 # Maintainer: BROOKS, Donald J.
-# Run through 0_master.R before the manuscript exports.
+# Run through 00_master.R before the manuscript exports.
 
 # 1. Verify source treatment and reconstruction ---------------------------
 

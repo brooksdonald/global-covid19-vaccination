@@ -1,6 +1,6 @@
 # Contextual exclusion and preparation of reported uptake
 # Maintainer: BROOKS, Donald J.
-# Run through 0_master.R.
+# Run through 00_master.R.
 
 # 1. Locate surrounding observations and remove conflicting runs -----------
 

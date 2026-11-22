@@ -52,14 +52,14 @@ get_project_path <- function() {
     return(dirname(normalizePath(tail(source_files, 1))))
   }
 
-  if (file.exists("0_master.R")) {
+  if (file.exists("00_master.R")) {
     return(normalizePath(getwd()))
   }
 
   stop(
-    "Cannot locate the project directory. Run source('0_master.R') from ",
+    "Cannot locate the project directory. Run source('00_master.R') from ",
     "the global-covid19-vaccination folder, or run Rscript with the path ",
-    "to 0_master.R."
+    "to 00_master.R."
   )
 }
 
@@ -104,7 +104,7 @@ export_cleaned_csv <- function(data, filename, directory = path_save) {
   }
 }
 
-# Export Word tables formatted in 11_export_tables.R.
+# Export Word tables formatted in 12_export_tables.R.
 export_docx <- function(...) {
   if (isTRUE(export_outputs)) save_as_docx(...)
   invisible(NULL)
@@ -116,7 +116,7 @@ figure_specs <- list(
   extra_wide = list(width = 13, height = 7)
 )
 
-# Export figures using the specified dimensions.
+# Export JPG and PDF versions of each figure at the same dimensions.
 export_figure <- function(filename, plot, size = "wide_tall", width = NULL,
                           height = NULL, dpi = 300, path = path_save) {
   if (!isTRUE(export_outputs)) {
@@ -131,14 +131,17 @@ export_figure <- function(filename, plot, size = "wide_tall", width = NULL,
   if (is.null(width)) width <- spec$width
   if (is.null(height)) height <- spec$height
 
-  ggsave(
-    path = path,
-    filename = filename,
-    plot = plot,
-    width = width,
-    height = height,
-    dpi = dpi
-  )
+  stem <- tools::file_path_sans_ext(filename)
+  for (extension in c("jpg", "pdf")) {
+    ggsave(
+      path = path,
+      filename = paste0(stem, ".", extension),
+      plot = plot,
+      width = width,
+      height = height,
+      dpi = dpi
+    )
+  }
 }
 
 # Read dated WHO API snapshots by default. Set refresh_api <- TRUE only when
@@ -376,29 +379,29 @@ base_total <- read_who_api_snapshot(
 
 # Load analyses -----------------------------------------------------------
 
-source(file.path(path_project, "1_entity_pop.R"))
+source(file.path(path_project, "01_entity_pop.R"))
 
 # Load treatment and interpolation functions, then prepare uptake estimates.
 source(file.path(path_project, "helper_clean_monotone.R"))
 source(file.path(path_project, "helper_clean_interpolate.R"))
-source(file.path(path_project, "2_data_cleaning.R"))
+source(file.path(path_project, "02_data_cleaning.R"))
 
 # Coverage, priority group adjustments and daily rates use these estimates.
-source(file.path(path_project, "3_static_values.R"))
-source(file.path(path_project, "4_emergency_coverage_analysis.R"))
-source(file.path(path_project, "5_emergency_dvr_analysis.R"))
-source(file.path(path_project, "6_postemergency_policy_analysis.R"))
-source(file.path(path_project, "7_postemergency_uptake_analysis.R"))
-source(file.path(path_project, "8_reporting_analysis.R"))
-source(file.path(path_project, "9_sensitivity_analyses.R"))
-source(file.path(path_project, "9_calculation_checks.R"))
+source(file.path(path_project, "03_static_values.R"))
+source(file.path(path_project, "04_emergency_coverage_analysis.R"))
+source(file.path(path_project, "05_emergency_dvr_analysis.R"))
+source(file.path(path_project, "06_postemergency_policy_analysis.R"))
+source(file.path(path_project, "07_postemergency_uptake_analysis.R"))
+source(file.path(path_project, "08_reporting_analysis.R"))
+source(file.path(path_project, "09_sensitivity_analyses.R"))
+source(file.path(path_project, "10_calculation_checks.R"))
 
 
 # Create figures, tables, and cleaned CSV exports -------------------------
 
-source(file.path(path_project, "10_export_figures.R"))
-source(file.path(path_project, "11_export_tables.R"))
-source(file.path(path_project, "12_export_data.R"))
+source(file.path(path_project, "11_export_figures.R"))
+source(file.path(path_project, "12_export_tables.R"))
+source(file.path(path_project, "13_export_data.R"))
 
 
 # End ---------------------------------------------------------------------

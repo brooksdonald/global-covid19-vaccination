@@ -38,7 +38,7 @@ data_cov_time_country <- data_admin_time_interp %>%
 # 2. Summarize country coverage distributions -----------------------------
 
 # Convert the six coverage series to one row per country, month and indicator.
-# Use country groupings defined in 3_static_values.R.
+# Use country groupings defined in 03_static_values.R.
 cov_acute_summary <- data_cov_time_country %>%
   select(iso, month_name, cov_tot_cps, cov_tot_boost,
          cov_old_cps, cov_old_boost, cov_hcw_cps, cov_hcw_boost) %>%

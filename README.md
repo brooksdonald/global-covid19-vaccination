@@ -13,23 +13,23 @@ vaccination policy category.
 
 ## Repository Structure
 
-- `0_master.R`: Main analysis script, input data loading and export functions.
+- `00_master.R`: Main analysis script, input data loading and export functions.
   Run this file to reproduce outputs.
-- `1_entity_pop.R`: Country, grouping, and population preparation.
-- `2_data_cleaning.R`: Preparation, treatment and reconstruction of total population
+- `01_entity_pop.R`: Country, grouping, and population preparation.
+- `02_data_cleaning.R`: Preparation, treatment and reconstruction of total population
   and priority group uptake data.
-- `3_static_values.R`: Country membership and fixed population denominators for aggregates.
-- `4_emergency_coverage_analysis.R`: 2021-2023 coverage analysis.
-- `5_emergency_dvr_analysis.R`: Daily vaccination rate analysis.
-- `6_postemergency_policy_analysis.R`: 2024 vaccination policy analysis.
-- `7_postemergency_uptake_analysis.R`: 2024 post-emergency uptake analysis.
+- `03_static_values.R`: Country membership and fixed population denominators for aggregates.
+- `04_emergency_coverage_analysis.R`: 2021-2023 coverage analysis.
+- `05_emergency_dvr_analysis.R`: Daily vaccination rate analysis.
+- `06_postemergency_policy_analysis.R`: 2024 vaccination policy analysis.
+- `07_postemergency_uptake_analysis.R`: 2024 post-emergency uptake analysis.
   Includes end-of-year uptake and a sensitivity analysis adding quarterly-only reports.
-- `8_reporting_analysis.R`: Reporting completeness analysis.
-- `9_sensitivity_analyses.R`: HCW adjustment, capping and matched-country comparisons.
-- `9_calculation_checks.R`: Checks of reported values and reconstructed estimates.
-- `10_export_figures.R`: Figure generation and export.
-- `11_export_tables.R`: Table generation and export.
-- `12_export_data.R`: Checks and exports of analytical data and calculation audits.
+- `08_reporting_analysis.R`: Reporting completeness analysis.
+- `09_sensitivity_analyses.R`: HCW adjustment, capping and matched-country comparisons.
+- `10_calculation_checks.R`: Checks of reported values and reconstructed estimates.
+- `11_export_figures.R`: Figure generation and export.
+- `12_export_tables.R`: Table generation and export.
+- `13_export_data.R`: Checks and exports of analytical data and calculation audits.
 - `helper_clean_monotone.R`: Source preparation, negative and zero exclusions,
   and contextual exclusion for total population and priority groups.
 - `helper_clean_interpolate.R`: Monthly priority group and dated total population
@@ -89,7 +89,7 @@ The cached WHO API snapshot files correspond to:
 - `https://xmart-api-public.who.int/WIISE/MT_COV_UPTAKE_TARGETGROUP_LONG`
 - `https://xmart-api-public.who.int/WIISE/COV_UPTAKE_WEEKLY`
 
-By default, `0_master.R` reads the cached JSON files rather than calling the live
+By default, `00_master.R` reads the cached JSON files rather than calling the live
 API, and writes flattened CSV mirrors to `input/api_csv/` for inspection when
 `export_outputs` is enabled. Cached WHO API snapshot filenames are prefixed with
 the refresh date in `YYMMDD` format;
@@ -98,23 +98,23 @@ the committed snapshot prefix `260630` corresponds to a 2026-06-30 refresh.
 Country, grouping, and denominator inputs:
 
 - Country and grouping metadata are prepared from the scoped `REF_COUNTRIES`
-  API snapshot in `1_entity_pop.R` and `8_reporting_analysis.R`. The stored
+  API snapshot in `01_entity_pop.R` and `08_reporting_analysis.R`. The stored
   snapshot includes only the fields used by this analysis.
 - Population denominators are prepared from the filtered `MT_REF_POPULATIONS`
-  API snapshot in `1_entity_pop.R`. The stored snapshot is filtered to
+  API snapshot in `01_entity_pop.R`. The stored snapshot is filtered to
   `YEAR == 2021` or `YEAR == 2024`, and `GENDER == "BOTH"`.
 
 Emergency period uptake inputs, 2021-2023:
 
 - Total population estimates are prepared from all dated `COV_UPTAKE_WEEKLY`
-  reports in `2_data_cleaning.R`. Treatment and reconstruction precede
+  reports in `02_data_cleaning.R`. Treatment and reconstruction precede
   selection of estimates for the final calendar day of each month.
 - Total population reporting completeness counts any non-missing, nonzero
   report for each indicator within a month, before anomaly treatment, in
-  `8_reporting_analysis.R`.
+  `08_reporting_analysis.R`.
 - Target group monthly administrative uptake values for older adults and health
   and care workers are prepared from `MT_COV_UPTAKE_TARGETGROUP_LONG` in
-  `2_data_cleaning.R`.
+  `02_data_cleaning.R`.
 - Monthly records use the first day as the month identifier. The total
   population audit also records `target_date`, the final calendar day used
   for estimation.
@@ -122,16 +122,16 @@ Emergency period uptake inputs, 2021-2023:
 Post-emergency inputs, 2024:
 
 - Vaccination policy is prepared from the filtered `AD_INDICATORS` API snapshot
-  in `6_postemergency_policy_analysis.R`. The stored snapshot is filtered to
+  in `06_postemergency_policy_analysis.R`. The stored snapshot is filtered to
   `YEAR == 2024` and `INDCODE` values `POLICY_VACCINATION`,
   `POLICY_REVACCINATION`, `POLICY_VACCINATION_COM`, and `POLICY_INTERVAL`.
 - Priority group uptake is prepared from filtered `AD_COVERAGES` and
-  `COV_UPTAKE` API snapshots in `7_postemergency_uptake_analysis.R`. The stored
+  `COV_UPTAKE` API snapshots in `07_postemergency_uptake_analysis.R`. The stored
   `AD_COVERAGES` snapshot is filtered to `COVERAGE_CATEGORY == "ADMIN"`,
   `VACCINECODE == "COVID19"`, and `YEAR == 2024`.
 
 To refresh these snapshots from the live API, set `refresh_api <- TRUE` near the
-top of `0_master.R` before running the script. Refreshing the API snapshots may
+top of `00_master.R` before running the script. Refreshing the API snapshots may
 change the analysis results if the upstream data have changed.
 
 ## Retrospective Estimation
@@ -167,7 +167,7 @@ The total population estimation cohort comprises 194 WHO Member States plus
 Kosovo and occupied Palestinian territory, excluding Eritrea and the Democratic
 People's Republic of Korea, leaving 194 countries. Country membership for
 reporting and aggregate estimates is defined separately in
-`8_reporting_analysis.R` and `3_static_values.R`.
+`08_reporting_analysis.R` and `03_static_values.R`.
 
 Documented priority group corrections precede the common treatment sequence.
 Counts are reconstructed at month end using elapsed days, including before
@@ -193,7 +193,7 @@ rates use the fixed total population CPS reporting denominators for each groupin
 
 ### Calculation records
 
-The following intermediate datasets are available after running `0_master.R`:
+The following intermediate datasets are available after running `00_master.R`:
 
 - `retro_preparation$mapping` links dated total population inputs to their
   country, indicator and date, including duplicates and conflicting values.
@@ -217,12 +217,12 @@ The following intermediate datasets are available after running `0_master.R`:
 - `data_cov_time_counts` contains the country uptake counts used for aggregation, and
   `data_cov_time_all` contains their sums, denominators and calculated coverage.
 
-Figures are prepared in `10_export_figures.R`; tables are calculated and
-formatted in `11_export_tables.R`.
+Figures are prepared in `11_export_figures.R`; tables are calculated and
+formatted in `12_export_tables.R`.
 
 ## HCW Adjustment Sensitivity in 2021-2023
 
-`9_sensitivity_analyses.R` compares HCW estimates with and without the
+`09_sensitivity_analyses.R` compares HCW estimates with and without the
 post-reconstruction adjustment for the difference between the HCW population
 and vaccination target. Both scenarios retain the same source selection,
 cleaning, interpolation and population denominators. The adjusted scenario
@@ -299,7 +299,7 @@ re-estimated in these analyses.
 The objective is to construct harmonized retrospective cumulative vaccination
 series for descriptive uptake analyses, preserving retained observations and
 reconstructing month-end counts. The processing summaries in
-`9_sensitivity_analyses.R` quantify the implemented sequence without comparing
+`09_sensitivity_analyses.R` quantify the implemented sequence without comparing
 alternative cleaning or reconstruction methods.
 
 The source summaries distinguish same-date preparation, priority-group report
@@ -444,28 +444,28 @@ with the package versions recorded in `renv.lock`.
 From R:
 
 ```r
-source("0_master.R")
+source("00_master.R")
 ```
 
 From a terminal:
 
 ```bash
 cd /path/to/global-covid19-vaccination
-Rscript 0_master.R
+Rscript 00_master.R
 ```
 
-The script determines the project directory from the location of `0_master.R`,
+The script determines the project directory from the location of `00_master.R`,
 so it can also be sourced from the parent directory:
 
 ```r
-source("global-covid19-vaccination/0_master.R")
+source("global-covid19-vaccination/00_master.R")
 ```
 
 The script reads inputs from `input/` and writes figures, tables and seven
 analytical CSVs to `output/`. The script creates the output directory if needed.
 
 To run the analysis without writing outputs, set
-`export_outputs <- FALSE` near the top of `0_master.R`.
+`export_outputs <- FALSE` near the top of `00_master.R`.
 
 ## Expected Runtime
 
@@ -477,24 +477,26 @@ changed.
 
 ## Generated Outputs
 
+Figures are exported as JPG and PDF at the same dimensions.
+
 Primary manuscript figures and tables:
 
-- `output/fig_1_end2023_coverage.jpg`
-- `output/fig_2_emergency_coverage_time.jpg`
-- `output/fig_3_dvr_summary.jpg`
-- `output/fig_4_policy_2024_all.jpg`
+- [fig_1_end2023_coverage.jpg](output/fig_1_end2023_coverage.jpg) · [PDF](output/fig_1_end2023_coverage.pdf)
+- [fig_2_emergency_coverage_time.jpg](output/fig_2_emergency_coverage_time.jpg) · [PDF](output/fig_2_emergency_coverage_time.pdf)
+- [fig_3_dvr_summary.jpg](output/fig_3_dvr_summary.jpg) · [PDF](output/fig_3_dvr_summary.pdf)
+- [fig_4_policy_2024_all.jpg](output/fig_4_policy_2024_all.jpg) · [PDF](output/fig_4_policy_2024_all.pdf)
 - `output/tab_1_end-2023_coverage.docx`
 - `output/tab_2_2024_uptake.docx`
 - `output/tab_3_dvr_max.docx`
 
 Supplementary and additional outputs:
 
-- `output/fig_supp_1_reporting.jpg`
-- `output/fig_supp_2_cov_cps_priority_time.jpg`
-- `output/fig_supp_3_cov_time_weight_all.jpg`
-- `output/fig_supp_4_cov_mediqr_all.jpg`
-- `output/fig_supp_5_dvr_time_increg.jpg`
-- `output/fig_supp_6_hcw_adjustment.jpg` and `output/fig_supp_6_hcw_adjustment.pdf`: HCW coverage with and without adjustment and end-2023 comparisons with total-population coverage.
+- [fig_supp_1_reporting.jpg](output/fig_supp_1_reporting.jpg) · [PDF](output/fig_supp_1_reporting.pdf)
+- [fig_supp_2_cov_cps_priority_time.jpg](output/fig_supp_2_cov_cps_priority_time.jpg) · [PDF](output/fig_supp_2_cov_cps_priority_time.pdf)
+- [fig_supp_3_cov_time_weight_all.jpg](output/fig_supp_3_cov_time_weight_all.jpg) · [PDF](output/fig_supp_3_cov_time_weight_all.pdf)
+- [fig_supp_4_cov_mediqr_all.jpg](output/fig_supp_4_cov_mediqr_all.jpg) · [PDF](output/fig_supp_4_cov_mediqr_all.pdf)
+- [fig_supp_5_dvr_time_increg.jpg](output/fig_supp_5_dvr_time_increg.jpg) · [PDF](output/fig_supp_5_dvr_time_increg.pdf)
+- [fig_supp_6_hcw_adjustment.jpg](output/fig_supp_6_hcw_adjustment.jpg) · [PDF](output/fig_supp_6_hcw_adjustment.pdf): HCW coverage with and without adjustment and end-2023 comparisons with total-population coverage.
 
 Supplementary tables are exported on A4 portrait pages.
 
@@ -514,7 +516,7 @@ Data exports:
 - `output/data_postemergency_policy.csv`
 
 For detailed calculation records, set `export_audit <- TRUE` and leave
-`export_outputs <- TRUE` in `0_master.R`. This writes method settings, study
+`export_outputs <- TRUE` in `00_master.R`. This writes method settings, study
 population, source preparation, treatment decisions, monthly estimates, daily
 total doses, source preservation counts, validation results and R session
 information to `output/audit/`. Calculation checks run with either setting.

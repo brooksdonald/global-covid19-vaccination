@@ -1,5 +1,5 @@
 # Reporting completeness from submitted values, before anomaly treatment
-# Run through 0_master.R. Reporting requires a non-missing, nonzero value.
+# Run through 00_master.R. Reporting requires a non-missing, nonzero value.
 # Priority groups retain the CPS-based report selection used for coverage.
 
 # 1. Define the reporting population and monthly calendar -----------------

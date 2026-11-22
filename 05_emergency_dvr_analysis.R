@@ -1,6 +1,6 @@
 # Daily vaccination rates from reconstructed total doses
 # Maintainer: BROOKS, Donald J.
-# Run through 0_master.R.
+# Run through 00_master.R.
 
 # 1. Calculate trailing 28 day means --------------------------------------
 
