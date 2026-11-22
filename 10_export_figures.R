@@ -1,18 +1,18 @@
-# Keep ggrepel label placement deterministic across regenerated figure exports.
+# Set the random seed for reproducible figure label placement.
 label_repel_seed <- 20240629
 
 # Figure 1 - end-2023 coverage and priority-group parity -------------------
 
-fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>% 
-  ggplot(aes(x = income_group, y = coverage, fill = income_group)) + 
-  geom_violin(trim = TRUE, na.rm = TRUE) + 
+fig_1_cov_end2023_inc <- data_fig_1_cov_end2023_inc %>%
+  ggplot(aes(x = income_group, y = coverage, fill = income_group)) +
+  geom_violin(trim = TRUE, na.rm = TRUE) +
   geom_boxplot(width = 0.1, color = "black", na.rm = TRUE) +
   facet_grid(group ~ measure, scales = "fixed", space = "free") +
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
   scale_fill_manual(values = pal_income) +
   labs(title = "Coverage by income group",
        x = label_axis_income,
-       y = label_axis_coverage) + 
+       y = label_axis_coverage) +
   theme_master +
   theme(legend.position = "none")
 
@@ -209,7 +209,7 @@ fig_3_comp_covax <- data_fig_3_admin_time_plot %>%
 
 # Combine
 fig_3_admin_time_all <- fig_3_comp_income + fig_3_comp_region + fig_3_comp_covax +
-  plot_layout(ncol = 3) + 
+  plot_layout(ncol = 3) +
   plot_annotation(
     title = "Doses administered",
     theme = theme(plot.title = element_text(face = "bold", size = 12, hjust = 0,
@@ -260,7 +260,21 @@ fig_cov_time_global_compA <- data_fig_4_cov_time_world %>%
     plot.margin = margin(0, 0.2, 0, 0, "cm")
   )
 
-fig_cov_time_global_compB <- data_fig_5_cov_time_mediqr_compA_fix %>%
+# Begin each series when 10% of the countries reporting that indicator for
+# that population group during 2021-2023 have submitted their first report.
+reporting_threshold_reached <- function(cumulative_reporters) {
+  cumulative_reporters > 0 & cumulative_reporters >= 0.10 * max(cumulative_reporters)
+}
+
+global_coverage_display_months <- count_time %>%
+  group_by(group, type) %>%
+  filter(reporting_threshold_reached(count_cumul)) %>%
+  ungroup() %>%
+  transmute(month_name = date, group,
+            indicator = recode(type, "Booster" = "At least one booster dose"))
+
+fig_cov_time_global_compB <- data_fig_2c_global_coverage %>%
+  semi_join(global_coverage_display_months, by = c("month_name", "group", "indicator")) %>%
   ggplot(aes(x = month_name, y = med_cov, linetype = indicator,
              fill = indicator, color = indicator)) +
   geom_ribbon(aes(ymin = perc_25, ymax = perc_75), alpha = 0.2, na.rm = TRUE) +
@@ -322,12 +336,12 @@ fig_5_dvr_summary_compA <- data_fig_5_dvr_summary_compA %>%
   geom_ribbon(aes(ymin = perc_10, ymax = perc_90), alpha = 0.2,
               color = "black", na.rm = TRUE) +
   geom_line(linewidth = 1.2, na.rm = TRUE) +
-  scale_y_continuous(labels = percent_format(),
+  scale_y_continuous(labels = scales::label_number(scale = 100),
                      limits = c(0, 0.012),
-                     expand = c(0, 0)) + 
+                     expand = c(0, 0)) +
   labs(
     title = "Global",
-    y = "Daily vaccination rate (% of population)",
+    y = label_axis_daily_rate,
     x = label_axis_date
   ) +
   theme_master +
@@ -344,7 +358,7 @@ fig_5_dvr_summary_compB <- data_fig_5_dvr_summary_compB %>%
               alpha = 0.2, na.rm = TRUE) +
   geom_line(linewidth = 1.2, na.rm = TRUE) +
   facet_wrap(~ dimension) +
-  scale_y_continuous(labels = scales::percent_format(),
+  scale_y_continuous(labels = scales::label_number(scale = 100),
                      limits = c(0, 0.012),
                      expand = c(0, 0)) +
   scale_color_manual(values = pal_income) +
@@ -357,7 +371,7 @@ fig_5_dvr_summary_compB <- data_fig_5_dvr_summary_compB %>%
   theme(axis.title.y = element_blank(),
         legend.position = "none",
         plot.title = element_text(face = "bold", vjust = 3, size = 12),
-        plot.margin = margin(0, 0, 0, 0, "cm")) 
+        plot.margin = margin(0, 0, 0, 0, "cm"))
 
 fig_5_dvr_summary <- (fig_5_dvr_summary_compA | fig_5_dvr_summary_compB) +
   plot_layout(widths = c(1, 2)) +
@@ -398,11 +412,11 @@ fig_6_policy_2024_all_compA <- data_fig_6_policy_2024_all_compA %>%
   ggplot(aes(x = n, y = group, fill = status_policy)) +
   geom_col(width = 0.75, color = "black", linewidth = 0.2,
            position = position_stack(reverse = TRUE)) +
-  geom_text(aes(label = ifelse(n > 0, n, "")), 
+  geom_text(aes(label = ifelse(n > 0, n, "")),
             position = position_stack(vjust = 0.5, reverse = TRUE), size = 3.5,
             fontface = "bold") +
-  geom_text(data = data_fig_6_policy_2024_all_compA_tot, 
-            aes(x = total, y = group, label = total), 
+  geom_text(data = data_fig_6_policy_2024_all_compA_tot,
+            aes(x = total, y = group, label = total),
             inherit.aes = FALSE, hjust = -0.25, size = 3.5, fontface = "bold") +
   scale_y_discrete(labels = wrap2, limits = rev) +
   scale_fill_manual(values = pal_policy, breaks = levels_policy_a,
@@ -428,7 +442,7 @@ fig_6_policy_2024_all_compB <- data_fig_6_policy_2024_all_compB %>%
   facet_wrap(~ group, ncol = 2) +
   scale_fill_manual(values = pal_policy, breaks = levels_policy_b, drop = FALSE) +
   scale_x_continuous(limits = c(0, 100),expand = expansion(mult = c(0, 0.02))) +
-  labs(x = paste0(label_axis_member_states_pct, " (within income group)"), 
+  labs(x = paste0(label_axis_member_states_pct, " (within income group)"),
        y = NULL, fill = NULL) +
   theme_fig6 +
   theme(legend.position = "none",
@@ -504,14 +518,24 @@ pal_reporting_main <- c(
   "Booster" = pal_dose_compare[["At least one booster dose"]]
 )
 
-pal_reporting_main_fill <- scales::alpha(pal_reporting_main, 0.35)
+pal_reporting_main_fill <- scales::alpha(c(
+  "CPS only" = pal_reporting_main[["Complete primary series"]],
+  "CPS and booster" = pal_reporting_main[["Booster"]],
+  "Booster only" = color_who_cat_base_3
+), 0.35)
+
+data_fig_supp_1_reporting_monthly <- count_time_monthly_categories %>%
+  mutate(group = factor(group, levels = c("Total population",
+                                          "Older adults",
+                                          "Health and care workers")),
+         category = factor(category, levels = c("CPS only", "CPS and booster", "Booster only")))
 
 data_fig_supp_1_reporting_compA <- count_time %>%
   filter(date < as.Date("2024-01-01")) %>%
-  mutate(group = factor(group, levels = c("Total population", 
-                                          "Older adults", 
+  mutate(group = factor(group, levels = c("Total population",
+                                          "Older adults",
                                           "Health and care workers")),
-         type = factor(type, levels = c("Complete primary series", 
+         type = factor(type, levels = c("Complete primary series",
                                           "Booster")))
 
 data_fig_supp_1_reporting_compA_labels <- data_fig_supp_1_reporting_compA %>%
@@ -532,11 +556,12 @@ data_fig_supp_1_reporting_compA_labels <- data_fig_supp_1_reporting_compA %>%
     )
   )
 
-fig_supp_1_reporting_compA <- data_fig_supp_1_reporting_compA %>%
-  ggplot(aes(x = date, y = count_month, fill = type)) +
+fig_supp_1_reporting_compA <- data_fig_supp_1_reporting_monthly %>%
+  ggplot(aes(x = date, y = count_month, fill = category)) +
   geom_col() +
-  geom_line(aes(y = count_cumul, color = type), linewidth = 1.25,
-            na.rm = TRUE) +
+  geom_line(data = data_fig_supp_1_reporting_compA,
+            aes(x = date, y = count_cumul, color = type, group = type),
+            inherit.aes = FALSE, linewidth = 1.25, na.rm = TRUE) +
   geom_point(
     data = data_fig_supp_1_reporting_compA_labels,
     aes(x = date, y = count_cumul, color = type),
@@ -559,20 +584,24 @@ fig_supp_1_reporting_compA <- data_fig_supp_1_reporting_compA %>%
     seed = label_repel_seed,
     show.legend = FALSE
   ) +
-  scale_color_manual(values = pal_reporting_main, 
-                     labels = c("Complete primary series only",
-                                "Complete primary series and booster")) +
-  scale_fill_manual(values = pal_reporting_main_fill, 
-                    labels = c("Complete primary series only",
-                               "Complete primary series and booster")) +
+  scale_color_manual(name = "Reported at least once",
+                     values = pal_reporting_main,
+                     breaks = c("Complete primary series", "Booster"),
+                     labels = c("CPS", "Booster")) +
+  scale_fill_manual(name = "Reported during month",
+                    values = pal_reporting_main_fill,
+                    breaks = c("CPS only", "CPS and booster", "Booster only"),
+                    drop = FALSE) +
+  guides(fill = guide_legend(order = 1, nrow = 1),
+         color = guide_legend(order = 2, nrow = 1)) +
   scale_x_date(
     date_breaks = "1 year",
     date_labels = "%Y",
     expand = expansion(mult = c(0.02, 0.08))
   ) +
   coord_cartesian(ylim = c(0, 200)) +
-  geom_hline(aes(yintercept = 194), linetype = "dashed", color = "black") +
-  theme_master + 
+  geom_hline(yintercept = reporting_member_state_count, linetype = "dashed", color = "black") +
+  theme_master +
   labs(
     title = "Reporting Member States",
     y = "Count of reporting Member States"
@@ -581,8 +610,10 @@ fig_supp_1_reporting_compA <- data_fig_supp_1_reporting_compA %>%
         axis.text.x = element_text(size = 10),
         axis.title.y = element_text(vjust = 4, size = 11),
         axis.text.y = element_text(size = 10),
-        legend.title = element_blank(),
+        legend.title = element_text(size = 9, face = "bold"),
+        legend.text = element_text(size = 9),
         legend.position = "bottom",
+        legend.box = "vertical",
         legend.justification = "left",
 	       plot.title = element_text(face = "bold", vjust = 2, size = 12),
 	       plot.subtitle = element_text(size = 8, face = "italic", vjust = 7),
@@ -671,7 +702,7 @@ fig_supp_1_reporting_compB <- data_fig_supp_1_reporting_compB %>%
 	    expand = expansion(mult = c(0.02, 0.08))
 	  ) +
 	  scale_y_continuous(labels = scales::percent_format()) +
-	  theme_master + 
+	  theme_master +
 	  labs(
 	    title = "Reporting completeness by income group",
 	    x = label_axis_date,
@@ -689,9 +720,7 @@ fig_supp_1_reporting_compB <- data_fig_supp_1_reporting_compB %>%
 		        plot.caption = element_text(hjust = 0, size = 8, vjust = -3),
 		        plot.margin = margin(0.45, 0, 0, 0, "cm"),
 		        panel.spacing.x = unit(0.9, "lines")) +
-	  facet_grid(type ~ population, scales = "free", space = "free") 
-# facet_wrap(~group, ncol = 1) + 
-# guides(color = guide_legend(ncol = 6, override.aes = list(size = 3)))
+	  facet_grid(type ~ population, scales = "free", space = "free")
 
 fig_supp_1_reporting <- (fig_supp_1_reporting_compA / fig_supp_1_reporting_compB) +
   plot_layout(heights = c(1, 1.3)) +
@@ -709,7 +738,6 @@ fig_supp_1_reporting
 export_figure(
   filename = "fig_supp_1_reporting.jpg",
   plot = fig_supp_1_reporting,
-  size = "double_tall",
   width = 11,
   height = 11
 )
@@ -773,20 +801,20 @@ export_figure(
 fig_supp_3_cov_time_weight_all <- data_fig_supp_3_cov_time_weight_all %>%
   ggplot(aes(x = month_name, y = coverage, color = measure)) +
   geom_line(linewidth = 1.5, na.rm = TRUE) +
-  
-  # bubble point
-  geom_point(data = data_fig_supp_3_cov_time_weight_all_last, 
+
+  # Mark the final available estimate.
+  geom_point(data = data_fig_supp_3_cov_time_weight_all_last,
              aes(month_name, coverage),
              size = 3.5, show.legend = FALSE) +
 
-  # boxed (outlined) label, repelled off the line
+  # Place endpoint labels without obscuring the trajectories.
   geom_label_repel(
     data = data_fig_supp_3_cov_time_weight_all_last,
-    aes(x = month_name, y = coverage, label = label, color = measure),  # map color to measure
+    aes(x = month_name, y = coverage, label = label, color = measure),
     inherit.aes = FALSE,
-    size = 3.5, label.size = 0.5,      # box border width
-    label.r = unit(0.25, "lines"),      # slight rounded corners
-    fill = "white",                     # white background so text pops
+    size = 3.5, label.size = 0.5,
+    label.r = unit(0.25, "lines"),
+    fill = "white",
     box.padding = 0.5, point.padding = 0.5,
     nudge_x = 0, nudge_y = 0,
     segment.color = "grey60", segment.size = 0.3,
@@ -800,8 +828,8 @@ fig_supp_3_cov_time_weight_all <- data_fig_supp_3_cov_time_weight_all %>%
   scale_y_continuous(labels = scales::percent_format(), limits = c(0, 1)) +
   labs(x = label_axis_date,
        y = label_axis_coverage,
-       color = NULL) + 
-  theme_master + 
+       color = NULL) +
+  theme_master +
   theme(legend.title = element_blank(),
         legend.position = "bottom",
         legend.justification = "left",
@@ -820,16 +848,27 @@ export_figure(
 
 # Supp. Figure 4 - summary coverage over time, line, group / income ------
 
+income_coverage_display_months <- count_time_inc %>%
+  group_by(WBINCOME_LONG_STATUS, population, type) %>%
+  filter(reporting_threshold_reached(count)) %>%
+  ungroup() %>%
+  transmute(month_name = DATE, group = population,
+            dimension = recode(WBINCOME_LONG_STATUS, "High income" = "HIC",
+                               "Upper middle income" = "UMIC", "Lower middle income" = "LMIC",
+                               "Low income" = "LIC"),
+            indicator = recode(type, "Booster" = "At least one booster dose"))
+
 fig_supp_4_cov_mediqr_all <- data_fig_supp_4_cov_mediqr_all %>%
-  ggplot(aes(x = month_name, y = med_cov, linetype = indicator, 
+  semi_join(income_coverage_display_months, by = c("month_name", "group", "dimension", "indicator")) %>%
+  ggplot(aes(x = month_name, y = med_cov, linetype = indicator,
              fill = indicator, color = indicator)) +
-  geom_ribbon(aes(ymin = perc_25, ymax = perc_75, fill = indicator, 
+  geom_ribbon(aes(ymin = perc_25, ymax = perc_75, fill = indicator,
                   color = indicator), alpha = 0.2, na.rm = TRUE) +
   geom_line(linewidth = 1, na.rm = TRUE) +
   scale_colour_manual(values = pal_dose_compare) +
   scale_fill_manual(values = pal_dose_compare) +
-  scale_linetype_manual(values = c("Complete primary series" = "solid", 
-                                   "At least one booster dose" = "22")) + 
+  scale_linetype_manual(values = c("Complete primary series" = "solid",
+                                   "At least one booster dose" = "22")) +
   scale_y_continuous(labels = scales::percent_format()) +
   labs(x = label_axis_date,
        y = label_axis_coverage) +
@@ -856,32 +895,29 @@ export_figure(
 plot_dvr_time_increg_panel <- function(panel_type) {
   panel_data <- data_fig_supp_5_dvr_time_increg %>%
     filter(type == panel_type)
-  
-  panel_points <- dvr_weighted %>%
+
+  panel_points <- dvr_max %>%
     filter(type == panel_type) %>%
-    group_by(type, dimension) %>%
-    filter(dvr_per == max(dvr_per)) %>%
     ungroup()
-  
+
   panel_dimensions <- levels(droplevels(panel_data$dimension))
-  
+
   panel_data %>%
     ggplot(aes(x = adm_date, y = dvr_per, color = dimension)) +
     geom_line(linewidth = 1.5, na.rm = TRUE) +
     geom_point(data = panel_points,
-               aes(x = adm_date, y = dvr_per, color = dimension), 
+               aes(x = adm_date, y = dvr_per, color = dimension),
                size = 3, shape = 21, fill = "black", stroke = 0) +
     scale_color_manual(values = pal_dvr_all,
                        breaks = panel_dimensions,
                        limits = panel_dimensions,
                        drop = FALSE) +
-    # scale_x_date(date_labels = "%b %Y") +
-    scale_y_continuous(labels = scales::percent_format(),
+    scale_y_continuous(labels = scales::label_number(scale = 100),
                        limits = c(0, 0.01)) +
-    theme_master + 
+    theme_master +
     labs(title = panel_type,
          y = if (panel_type == "Income group") {
-           "Percentage of total population"
+           sub(" per 100", "\nper 100", label_axis_daily_rate, fixed = TRUE)
          } else {
            NULL
          },
@@ -906,7 +942,7 @@ plot_dvr_time_increg_panel <- function(panel_type) {
           plot.title = element_text(face = "bold", vjust = 3, size = 11),
           plot.subtitle = element_text(size = 8, face = "italic", vjust = 7),
           plot.caption = element_text(hjust = 0, size = 8, vjust = -3),
-          plot.margin = margin(0.5,0.5,0.5,0.5, "cm")) + 
+          plot.margin = margin(0.5,0.5,0.5,0.5, "cm")) +
     guides(color = guide_legend(nrow = 1, byrow = TRUE))
 }
 
@@ -925,3 +961,122 @@ export_figure(
   plot = fig_supp_5_dvr_time_increg,
   size = "wide_tall"
 )
+
+
+# Supp. Figure 6 - HCW adjustment and coverage relative to the total population ----
+
+hcw_dose_labels <- c(a1d = "At least one dose", cps = "Complete primary series",
+                     boost = "At least one booster dose")
+
+hcw_year_end <- data_hcw_adjustment_country %>%
+  filter(status_who == "Member State", month(month_name) == 12) %>%
+  mutate(year = year(month_name),
+         indicator = factor(indicator, names(hcw_dose_labels), hcw_dose_labels))
+
+hcw_country_counts <- hcw_year_end %>%
+  filter(is.finite(unadjusted_coverage), is.finite(adjusted_coverage)) %>%
+  summarise(n_increased = n_distinct(iso[estimate_changed]), n_compared = n_distinct(iso),
+            .by = c(year, indicator))
+
+hcw_colours <- c(Unadjusted = color_who_seq_1, Adjusted = color_who_cat_base_2)
+hcw_pair_width <- 0.86
+hcw_dodge <- position_dodge(width = hcw_pair_width, orientation = "y", reverse = TRUE)
+
+hcw_weighted <- data_hcw_adjustment_summary %>%
+  filter(type == "all", month(month_name) == 12) %>%
+  transmute(year = year(month_name),
+            indicator = factor(indicator, names(hcw_dose_labels), hcw_dose_labels),
+            Unadjusted = coverage_unadjusted, Adjusted = coverage_adjusted, difference_pp,
+            bracket = pmax(Unadjusted, Adjusted) + 0.065, label_x = bracket + 0.075,
+            year_before = year - hcw_pair_width / 4, year_after = year + hcw_pair_width / 4) %>%
+  left_join(hcw_country_counts, by = c("year", "indicator"))
+
+hcw_bars <- hcw_weighted %>%
+  pivot_longer(c(Unadjusted, Adjusted), names_to = "scenario", values_to = "coverage") %>%
+  mutate(scenario = factor(scenario, levels = names(hcw_colours)))
+
+hcw_fig_theme <- theme_master +
+  theme(strip.text = element_text(size = 8),
+        panel.spacing.x = unit(0.44, "cm"),
+        axis.text.x = element_text(size = 8), axis.text.y = element_text(size = 8),
+        axis.title.x = element_text(size = 10, vjust = 0, margin = margin(t = 5)),
+        axis.title.y = element_text(size = 10, vjust = 0, margin = margin(r = 5)),
+        legend.position = "bottom", legend.justification = "left",
+        legend.text = element_text(size = 8))
+
+hcw_coverage <- ggplot(hcw_bars, aes(coverage, year)) +
+  geom_col(aes(fill = scenario), orientation = "y", position = hcw_dodge, width = 0.80) +
+  geom_text(aes(label = sprintf("%.1f", 100 * coverage), colour = scenario, group = scenario),
+            position = hcw_dodge, hjust = 1.12, size = 2.45, show.legend = FALSE) +
+  geom_segment(data = hcw_weighted,
+               aes(x = Unadjusted + 0.01, xend = bracket, y = year_before, yend = year_before),
+               linewidth = 0.28) +
+  geom_segment(data = hcw_weighted,
+               aes(x = bracket, xend = bracket, y = year_before, yend = year_after),
+               linewidth = 0.28) +
+  geom_segment(data = hcw_weighted,
+               aes(x = bracket, xend = Adjusted + 0.01, y = year_after, yend = year_after),
+               linewidth = 0.28, arrow = grid::arrow(length = unit(1.1, "mm"), type = "closed")) +
+  geom_label(data = hcw_weighted,
+             aes(x = label_x, y = year, label = sprintf("%+.1f pp", difference_pp)),
+             hjust = 0, vjust = 0.25, size = 2.35, fontface = "bold", linewidth = 0.22,
+             label.padding = unit(c(0.20, 0.40, 0.20, 0.40), "lines"),
+             label.r = unit(0.40, "lines")) +
+  geom_text(data = hcw_weighted,
+            aes(x = label_x + 0.015, y = year, label = sprintf("%d/%d", n_increased, n_compared),
+                colour = "Countries with higher adjusted coverage"),
+            hjust = 0, vjust = 2.35, size = 2.30) +
+  facet_wrap(vars(indicator), nrow = 1) +
+  scale_fill_manual(NULL, values = hcw_colours, guide = guide_legend(order = 1)) +
+  scale_colour_manual(NULL, values = c(Unadjusted = "white", Adjusted = "black",
+                                      "Countries with higher adjusted coverage" = "grey25"),
+                      breaks = "Countries with higher adjusted coverage",
+                      guide = guide_legend(order = 2, override.aes = list(label = "n/N", hjust = 0.5, vjust = 0.5))) +
+  scale_x_continuous(breaks = scales::breaks_width(0.25), labels = scales::label_number(scale = 100, accuracy = 1),
+                     expand = expansion(mult = c(0, 0.40))) +
+  scale_y_reverse(breaks = sort(unique(hcw_weighted$year)), minor_breaks = NULL) +
+  labs(x = "Population-weighted HCW coverage (%)", y = NULL) +
+  hcw_fig_theme
+
+hcw_paired <- hcw_year_end %>%
+  filter(year == 2023, paired) %>%
+  arrange(crosses_above_total)
+
+hcw_parity <- data_hcw_adjustment_comparison %>%
+  filter(type == "all", month_name == as.Date("2023-12-01")) %>%
+  mutate(indicator = factor(indicator, names(hcw_dose_labels), hcw_dose_labels),
+         strip = sprintf("%s<br><span style='font-size:6pt'><i>%d of %d crossed above parity</i></span>",
+                        indicator, countries_crossing_above_total, countries))
+
+hcw_scatter <- ggplot(hcw_paired, aes(hcw_total_gap_unadjusted_pp, hcw_total_gap_adjusted_pp)) +
+  geom_hline(yintercept = 0, linewidth = 0.3, colour = "grey65") +
+  geom_vline(xintercept = 0, linewidth = 0.3, colour = "grey65") +
+  geom_abline(slope = 1, intercept = 0, linewidth = 0.35, linetype = "dashed") +
+  geom_point(aes(fill = crosses_above_total), shape = 21, size = 1.6,
+             stroke = 0.25) +
+  geom_point(data = hcw_parity,
+             aes(x = median_gap_unadjusted_pp, y = median_gap_adjusted_pp,
+                 shape = "Country median"),
+             size = 2.7, stroke = 0.6, fill = "white") +
+  facet_wrap(vars(indicator), nrow = 1,
+             labeller = as_labeller(setNames(hcw_parity$strip, as.character(hcw_parity$indicator)))) +
+  scale_fill_manual(NULL, values = c("FALSE" = scales::alpha("grey70", 0.85), "TRUE" = color_who_cat_base_2),
+                    breaks = c(FALSE, TRUE), labels = c("Other countries", "Crossed above parity")) +
+  scale_shape_manual(NULL, values = c("Country median" = 23)) +
+  scale_x_continuous(breaks = seq(-100, 100, 50)) +
+  scale_y_continuous(breaks = seq(-100, 100, 50)) +
+  coord_equal(xlim = c(-100, 100), ylim = c(-100, 100), expand = TRUE) +
+  guides(fill = guide_legend(order = 1), shape = guide_legend(order = 2)) +
+  labs(x = "Coverage gap before adjustment (HCW minus total population, pp)",
+       y = "Coverage gap after adjustment\n(HCW minus total population, pp)") +
+  hcw_fig_theme +
+  theme(strip.text.x = ggtext::element_markdown(size = 8))
+
+fig_supp_6_hcw_adjustment <- (hcw_coverage / hcw_scatter) +
+  plot_annotation(tag_levels = "a", theme = panel_tag_theme) &
+  panel_tag_theme
+
+export_figure("fig_supp_6_hcw_adjustment.jpg", fig_supp_6_hcw_adjustment,
+              width = 7.25, height = 7.5, dpi = 450)
+export_figure("fig_supp_6_hcw_adjustment.pdf", fig_supp_6_hcw_adjustment,
+              width = 7.25, height = 7.5)

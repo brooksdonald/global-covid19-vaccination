@@ -58,15 +58,13 @@ pop_tot <- raw_population_select %>%
   select(iso,
          year,
          value) %>%
-  pivot_wider(names_from = year, 
+  pivot_wider(names_from = year,
               values_from = value,
               names_prefix = "pop_")
 
 # Prepare 2021 / 2024 older adult population estimates.
-cuts <- c(45, 50, 55, 60, 65, 70, 75, 80)
-
 pop_old <- raw_population_select %>%
-  filter(year %in% c(2021, 2024), str_detect(group_age, "^Y\\d+$")) %>%
+  filter(str_detect(group_age, "^Y\\d+$")) %>%
   mutate(age = as.integer(str_remove(group_age, "^Y"))) %>%
   group_by(iso, year) %>%
   summarise(

@@ -1,40 +1,11 @@
-# Prepare daily vaccination rates -----------------------------------------
+# Daily vaccination rates from reconstructed total doses
+# Maintainer: BROOKS, Donald J.
+# Run through 0_master.R.
 
-prepare_dvr_reports <- function(raw_weekly,
-                                date_start = as.Date("2021-01-01"),
-                                date_end = as.Date("2023-12-31")) {
-  raw_weekly %>%
-
-    # Keep only non-negative cumulative total-dose reports in the analysis window.
-    transmute(
-      iso = COUNTRY,
-      adm_date = as.Date(DATE),
-      adm_tot_td = as.numeric(DOSES_ADMINISTERED)
-    ) %>%
-    filter(
-      !is.na(iso),
-      iso != "None",
-      !is.na(adm_tot_td),
-      adm_tot_td >= 0
-    ) %>%
-    distinct() %>%
-    rename(date = adm_date) %>%
-    fix_admin_weekly_dates() %>%
-    rename(adm_date = date) %>%
-    filter(
-      !is.na(adm_date),
-      adm_date >= date_start,
-      adm_date <= date_end
-    ) %>%
-    group_by(iso, adm_date) %>%
-
-    # Retain the largest cumulative value if duplicate country-date records
-    # remain after exact duplicate removal.
-    summarise(adm_tot_td = max(adm_tot_td), .groups = "drop")
-}
+# 1. Calculate trailing 28 day means --------------------------------------
 
 trailing_mean_partial <- function(x, width = 28L) {
-  # Calculate a trailing mean even before a full 28-day window is available.
+  # At the beginning of supported data, average the available days only.
   x_zero <- ifelse(is.na(x), 0, x)
   cumulative_sum <- cumsum(x_zero)
   cumulative_n <- cumsum(!is.na(x))
@@ -43,129 +14,64 @@ trailing_mean_partial <- function(x, width = 28L) {
   ifelse(denominator > 0, numerator / denominator, NA_real_)
 }
 
-interpolate_dvr_daily <- function(df) {
-  df %>%
-    group_by(iso) %>%
-    arrange(adm_date, .by_group = TRUE) %>%
-    group_modify(~{
-      first_report_date <- min(.x$adm_date)
-      last_report_date <- max(.x$adm_date)
-      reported_intro_date <- as.Date(first(.x$date_intro))
+# 2. Evaluate the retained total dose curve on consecutive calendar days ----
 
-      # Use the programme introduction date as a zero anchor. Where it is
-      # unavailable or does not precede the first report, use the preceding day
-      # so the first cumulative report is retained without extrapolation.
-      interpolation_start <- if (
-        is.na(reported_intro_date) ||
-        reported_intro_date >= first_report_date
-      ) {
-        first_report_date - 1
-      } else {
-        reported_intro_date
-      }
+# Calculate a daily rate only where two cumulative estimates are available.
+# Leave the first rate missing when no earlier introduction anchor is available.
+message("Deriving daily vaccination rates from the retained total dose curve")
 
-      daily <- tibble(
-        # Create the full daily sequence anchored at introduction or first report.
-        adm_date = seq.Date(
-          interpolation_start,
-          last_report_date,
-          by = "day"
-        )
-      ) %>%
-        left_join(
-          .x %>% select(adm_date, adm_tot_td_monotone),
-          by = "adm_date"
-        )
+# Daily rate estimates also include reporting territories outside the monthly
+# coverage cohort. Apply total population treatment to their reports.
+retro_dvr_extra_population <- retro_raw_all %>%
+  filter(!iso %in% retro_population$iso,
+         !is.na(adm_tot_td), adm_tot_td >= 0) %>% distinct(iso) %>%
+  left_join(entity_pop %>% select(iso, pop_2021, date_intro), by = "iso")
+# Retain counts for territories without a population denominator. Rates per
+# 100 population remain missing for these territories.
+retro_test("extra_dvr_populations_valid_where_available",
+  all(is.na(retro_dvr_extra_population$pop_2021) |
+        (is.finite(retro_dvr_extra_population$pop_2021) &
+           retro_dvr_extra_population$pop_2021 > 0)))
+retro_dvr_population <- bind_rows(retro_population %>% select(iso, pop_2021, date_intro),
+                                 retro_dvr_extra_population)
+retro_extra_preparation <- prepare_dated_reports(
+  retro_raw_all %>% filter(iso %in% retro_dvr_extra_population$iso),
+  retro_dvr_extra_population)
+retro_extra_processed <- lapply(split(retro_extra_preparation$reports,
+                                     retro_extra_preparation$reports$iso),
+                               treat_dated_reports)
+retro_extra_audit <- bind_rows(lapply(retro_extra_processed, `[[`, "audit"))
+retro_td_audit <- bind_rows(retro_audit, retro_extra_audit) %>%
+  filter(indicator == "adm_tot_td")
+retro_td_sources <- split(retro_td_audit, retro_td_audit$iso)
+retro_daily <- bind_rows(lapply(names(retro_td_sources), function(country) {
+  source <- retro_td_sources[[country]]
+  anchors <- source %>% filter(!is.na(after_downward)) %>% arrange(date)
+  if (!nrow(anchors)) return(tibble())
+  population <- retro_dvr_population %>% filter(iso == country)
+  intro <- population$date_intro[1]
+  first_date <- min(anchors$date)
+  last_date <- max(anchors$date)
+  start_date <- if (!is.na(intro) && intro < first_date) intro else first_date
 
-      daily$adm_tot_td_monotone[
-        daily$adm_date == interpolation_start &
-          is.na(daily$adm_tot_td_monotone)
-      ] <- 0
+  # Begin at the supported start, including dates in late 2020 if necessary
+  # to calculate January rates. Never extend rates beyond the final anchor.
+  daily <- reconstruct_dated_series(source,
+    target_dates = seq(start_date, last_date, by = "day"),
+    indicator = "adm_tot_td", introduction_date = intro,
+    population = population$pop_2021[1], carry_forward = FALSE)
+  daily %>% mutate(iso = country,
+    daily_doses = estimate - lag(estimate),
+    dvr_4wk_td = trailing_mean_partial(daily_doses, width = 28L),
+    first_retained_report = first_date, last_retained_report = last_date,
+    reconstruction_start = start_date)
+}))
 
-      # Interpolate the cumulative curve between observed cumulative reports.
-      reported_idx <- which(!is.na(daily$adm_tot_td_monotone))
-      daily$adm_tot_td_daily <- if (length(reported_idx) >= 2L) {
-        approx(
-          x = reported_idx,
-          y = daily$adm_tot_td_monotone[reported_idx],
-          xout = seq_len(nrow(daily)),
-          method = "linear",
-          rule = 2
-        )$y
-      } else {
-        daily$adm_tot_td_monotone
-      }
-
-      daily %>%
-        mutate(
-          daily_doses = adm_tot_td_daily - lag(
-            adm_tot_td_daily,
-            default = first(adm_tot_td_daily)
-          ),
-          dvr_4wk_td = trailing_mean_partial(daily_doses, width = 28L),
-          date_intro_dvr = interpolation_start,
-          date_first_report_dvr = first_report_date,
-          date_last_report_dvr = last_report_date
-        )
-    }) %>%
-    ungroup()
-}
-
-dvr_reports <- prepare_dvr_reports(base_total)
-
-# Clean DVR cumulative totals using the same monotonicity rule as coverage data.
-source(file.path(path_project, "helper_clean_monotone.R"))
-
-dvr_reports_clean <- clean_coverage_monotone_df(
-  dvr_reports,
-  id_iso = "iso",
-  id_time = "adm_date",
-  vars_to_clean = "adm_tot_td",
-  depth = 3,
-  method = "interpolate",
-  round_int = TRUE
-)
-
-dvr_monotone_log <- attr(dvr_reports_clean, "monotone_log")
-
-# Add programme introduction dates for country-specific interpolation anchors.
-dvr_reports_clean <- dvr_reports_clean %>%
-  left_join(
-    entity_pop %>% select(iso, date_intro),
-    by = "iso"
-  )
-
-# Track countries where the first report date is used as the practical anchor.
-dvr_intro_fallback_log <- dvr_reports_clean %>%
-  group_by(iso) %>%
-  summarise(
-    date_intro = first(date_intro),
-    date_first_report = min(adm_date),
-    .groups = "drop"
-  ) %>%
-  filter(is.na(date_intro) | date_intro >= date_first_report) %>%
-  mutate(
-    date_intro_used = date_first_report - 1,
-    reason = if_else(
-      is.na(date_intro),
-      "programme introduction date unavailable",
-      "programme introduction date did not precede first report"
-    )
-  )
-
-# Interpolate daily cumulative totals and retain the trailing 28-day rate.
-raw_data_acute_time_daily <- dvr_reports_clean %>%
-  interpolate_dvr_daily() %>%
-  filter(
-    adm_date >= as.Date("2021-01-01"),
-    adm_date <= as.Date("2023-12-31")
-  ) %>%
-  transmute(
-    a_iso = iso,
-    adm_date,
-    dvr_4wk_td
-  )
-
+# Select the study period and fields used for daily rate summaries.
+raw_data_acute_time_daily <- retro_daily %>%
+  filter(target_date >= as.Date("2021-01-01"),
+         target_date <= as.Date("2023-12-31")) %>%
+  transmute(a_iso = iso, adm_date = target_date, dvr_4wk_td)
 
 # Staging -----------------------------------------------------------------
 
@@ -177,8 +83,8 @@ data_admin_daily <- raw_data_acute_time_daily %>%
   left_join(., entity_pop %>% select(iso, region_who, income_group, status_who,
                                      status_covax, pop_2021),
             by = "iso") %>%
-  
-  # Express DVR as a percentage of the 2021 total population denominator.
+
+  # Express daily doses per person using the 2021 population denominator.
   mutate(dvr_4wk_td_per = dvr_4wk_td / pop_2021)
 
 
@@ -190,8 +96,8 @@ dvr_weighted_all <- data_admin_daily %>%
   filter(status_who == "Member State",
          adm_date <= as.Date("2023-12-31")) %>%
   group_by(adm_date) %>%
-  summarize(dvr = sum(dvr_4wk_td, na.rm = TRUE)) %>%
-  ungroup() %>% 
+  summarize(dvr = sum_available(dvr_4wk_td)) %>%
+  ungroup() %>%
   mutate(type = "All",
          dimension = "Global")
 
@@ -201,8 +107,8 @@ dvr_weighted_income <- data_admin_daily %>%
          income_group != "",
          adm_date <= as.Date("2023-12-31")) %>%
   group_by(adm_date, income_group) %>%
-  summarize(dvr = sum(dvr_4wk_td, na.rm = TRUE)) %>%
-  ungroup() %>% 
+  summarize(dvr = sum_available(dvr_4wk_td)) %>%
+  ungroup() %>%
   rename(dimension = income_group) %>%
   mutate(type = "Income group")
 
@@ -210,8 +116,8 @@ dvr_weighted_region <- data_admin_daily %>%
   filter(status_who == "Member State",
          adm_date <= as.Date("2023-12-31")) %>%
   group_by(adm_date, region_who) %>%
-  summarize(dvr = sum(dvr_4wk_td, na.rm = TRUE)) %>%
-  ungroup() %>% 
+  summarize(dvr = sum_available(dvr_4wk_td)) %>%
+  ungroup() %>%
   rename(dimension = region_who) %>%
   mutate(type = "WHO region")
 
@@ -219,41 +125,44 @@ dvr_weighted_covax <- data_admin_daily %>%
   filter(!is.na(status_covax),
          adm_date <= as.Date("2023-12-31")) %>%
   group_by(adm_date, status_covax) %>%
-  summarize(dvr = sum(dvr_4wk_td, na.rm = TRUE)) %>%
-  ungroup() %>% 
+  summarize(dvr = sum_available(dvr_4wk_td)) %>%
+  ungroup() %>%
   rename(dimension = status_covax) %>%
   mutate(type = "COVAX participation category")
 
 dvr_weighted <- rbind(dvr_weighted_all,
-                      dvr_weighted_income, 
+                      dvr_weighted_income,
                       dvr_weighted_region,
                       dvr_weighted_covax) %>%
-  mutate(pop = case_when(
-    dimension == "Global" ~ pop_rep_tot_2021_cps,
-    dimension == "HIC" ~ pop_rep_tot_2021_cps_hic,
-    dimension == "UMIC" ~ pop_rep_tot_2021_cps_umic,
-    dimension == "LMIC" ~ pop_rep_tot_2021_cps_lmic,
-    dimension == "LIC" ~ pop_rep_tot_2021_cps_lic,
-    dimension == "AFR" ~ pop_rep_tot_2021_cps_afr,
-    dimension == "AMR" ~ pop_rep_tot_2021_cps_amr,
-    dimension == "EMR" ~ pop_rep_tot_2021_cps_emr,
-    dimension == "EUR" ~ pop_rep_tot_2021_cps_eur,
-    dimension == "SEAR" ~ pop_rep_tot_2021_cps_sear,
-    dimension == "WPR" ~ pop_rep_tot_2021_cps_wpr,
-    dimension == "AMC" ~ pop_rep_tot_2021_cps_amc,
-    dimension == "Self-financing" ~ `pop_rep_tot_2021_cps_self-financing`,
-    dimension == "Non-COVAX" ~ `pop_rep_tot_2021_cps_non-covax`,
-    TRUE ~ NA_real_
-  ),
-  dvr_per = dvr / pop)
+  # Use the fixed total population CPS reporting denominator for each grouping.
+  left_join(population_reporting %>%
+              filter(measure == "adm_tot_cps") %>%
+              transmute(dimension = if_else(type == "all", "Global", dimension),
+                        pop = population),
+            by = "dimension") %>%
+  mutate(dvr_per = dvr / pop)
 
 # Filter to max aggregate dvr per country grouping.
 dvr_max <- dvr_weighted %>%
+  filter(!is.na(dvr_per)) %>%
   group_by(dimension) %>%
   filter(dvr_per == max(dvr_per)) %>%
   select(-pop,
          -dvr)
 
+# Each country contributes its highest 28-day mean, irrespective of peak date.
+dvr_country_peak_summary <- data_admin_daily %>%
+  filter(is.finite(dvr_4wk_td_per)) %>%
+  group_by(iso) %>%
+  summarise(peak_per_100 = 100 * max(dvr_4wk_td_per), .groups = "drop") %>%
+  inner_join(country_groupings, by = "iso") %>%
+  group_by(type, dimension) %>%
+  summarise(
+    peak_median = median(peak_per_100),
+    peak_q25 = quantile(peak_per_100, 0.25, names = FALSE),
+    peak_q75 = quantile(peak_per_100, 0.75, names = FALSE),
+    .groups = "drop"
+  )
 
 # Calculate cross-country percentile ranges -------------------------------
 
@@ -305,7 +214,7 @@ dvr_summary <- bind_rows(
 
 # Prepare visualizations ---------------------------------------------------
 
-# Figure 5
+# Figure 3: global and income group daily rate distributions.
 data_fig_5_dvr_summary_compA <- dvr_summary %>%
   filter(
     type == "All",
@@ -325,8 +234,8 @@ data_fig_5_dvr_summary_compB <- dvr_summary %>%
 data_fig_supp_5_dvr_time_increg <- dvr_weighted %>%
   filter(type != "COVAX participation category") %>%
   mutate(type = factor(type, levels = c("All", "Income group", "WHO region")),
-         dimension = factor(dimension, levels = c("Global", "AFR", "AMR", "EMR", 
-                                                  "EUR", "SEAR", "WPR", "HIC", 
+         dimension = factor(dimension, levels = c("Global", "AFR", "AMR", "EMR",
+                                                  "EUR", "SEAR", "WPR", "HIC",
                                                   "UMIC", "LMIC", "LIC")))
 
 

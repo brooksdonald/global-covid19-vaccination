@@ -1,639 +1,115 @@
+# Reporting completeness from submitted values, before anomaly treatment
+# Run through 0_master.R. Reporting requires a non-missing, nonzero value.
+# Priority groups retain the CPS-based report selection used for coverage.
 
-# Select one target-group row per country-month, matching upstream coverage logic.
-# Reporting status is then derived from the selected coverage row.
-select_target_reporting_row <- function(df, target_group) {
-  df %>%
-    filter(
-      TARGET_GROUP == target_group,
-      WHO_LEGAL_STATUS_TITLE == "Member State",
-      !is.na(N_VACC_LAST_DOSE),
-      N_VACC_LAST_DOSE != 0
-    ) %>%
-    mutate(DATE = as.Date(DATE)) %>%
-    group_by(ISO_3_CODE, DATE) %>%
-    slice_max(order_by = N_VACC_LAST_DOSE, n = 1, with_ties = FALSE) %>%
-    ungroup()
-}
+# 1. Define the reporting population and monthly calendar -----------------
 
-reporting_set_missing_corrections <- data_corrections %>%
-  filter(
-    analysis == "reporting_2021_2023",
-    action == "set_missing"
-  ) %>%
-  transmute(
-    correction_id,
-    iso,
-    group,
-    indicator,
-    date = as.Date(period),
-    match_value = as.numeric(match_value)
-  )
+reporting_members <- entity_pop %>%
+  filter(status_who == "Member State") %>%
+  transmute(iso,
+    WBINCOME_LONG_STATUS = recode(income_group,
+      HIC = "High income", UMIC = "Upper middle income",
+      LMIC = "Lower middle income", LIC = "Low income"))
 
-# Reporting corrections target one country-group-indicator-month at a time.
-stopifnot(
-  !anyDuplicated(
-    reporting_set_missing_corrections[c("iso", "group", "indicator", "date")]
-  )
+reporting_months <- seq(as.Date("2021-01-01"), as.Date("2023-12-01"), by = "month")
+reporting_groups <- c("Total population", "Older adults", "Health and care workers")
+reporting_member_state_count <- nrow(reporting_members)
+
+# 2. Identify qualifying reports ----------------------------------------
+
+# Keep the selected risk-group report even when other source rows contain
+# additional indicators. Missing or zero CPS makes a source row ineligible.
+reporting_priority <- base_target %>%
+  filter(TARGET_GROUP %in% c("HW", "OLDER_60"),
+         WHO_LEGAL_STATUS_TITLE == "Member State",
+         as.Date(DATE) >= min(reporting_months),
+         as.Date(DATE) < as.Date("2024-01-01")) %>%
+  select_target_report_rows(with_ties = FALSE) %>%
+  transmute(iso = ISO_3_CODE, date = as.Date(DATE),
+    group = recode(TARGET_GROUP, HW = "Health and care workers", OLDER_60 = "Older adults"),
+    cps_reported = !is.na(N_VACC_LAST_DOSE) & N_VACC_LAST_DOSE != 0,
+    booster_reported = !is.na(N_VACC_BOOSTER_DOSE) & N_VACC_BOOSTER_DOSE != 0)
+
+# Each total-population indicator qualifies if any dated report in the month
+# contains a non-missing, nonzero value. Repeated reports count once per month.
+reporting_total <- base_total %>%
+  transmute(iso = COUNTRY, date = floor_date(as.Date(DATE), "month"),
+    cps_reported = !is.na(PERSONS_VACCINATED_COMPLETE) & PERSONS_VACCINATED_COMPLETE != 0,
+    booster_reported = !is.na(PERSONS_VACCINATED_BOOSTER_ADD_DOSE) &
+      PERSONS_VACCINATED_BOOSTER_ADD_DOSE != 0) %>%
+  filter(date >= min(reporting_months), date <= max(reporting_months)) %>%
+  semi_join(reporting_members, by = "iso") %>%
+  group_by(iso, date) %>%
+  summarise(cps_reported = any(cps_reported), booster_reported = any(booster_reported),
+            .groups = "drop") %>%
+  mutate(group = "Total population")
+
+# 3. Accumulate reporting status ----------------------------------------
+
+# Once a country has reported, later missing or zero values do not remove
+# its cumulative reporting status. Monthly status uses submitted values only.
+reporting_country_month <- crossing(iso = reporting_members$iso,
+  date = reporting_months, group = reporting_groups) %>%
+  left_join(bind_rows(reporting_priority, reporting_total), by = c("iso", "date", "group")) %>%
+  left_join(reporting_members, by = "iso") %>%
+  mutate(across(c(cps_reported, booster_reported), ~replace_na(.x, FALSE))) %>%
+  group_by(iso, group) %>%
+  arrange(date, .by_group = TRUE) %>%
+  mutate(cps_ever = cumany(cps_reported), booster_ever = cumany(booster_reported)) %>%
+  ungroup()
+
+reporting_country_indicator <- bind_rows(
+  reporting_country_month %>%
+    transmute(iso, date, group, WBINCOME_LONG_STATUS,
+      type = "Complete primary series", reported = cps_reported, ever_reported = cps_ever),
+  reporting_country_month %>%
+    transmute(iso, date, group, WBINCOME_LONG_STATUS,
+      type = "Booster", reported = booster_reported, ever_reported = booster_ever)
 )
 
-# Apply documented set-missing corrections before cumulative reporting counts.
-apply_reporting_set_missing <- function(df, target_group, iso_col, date_col) {
-  rules <- reporting_set_missing_corrections %>%
-    filter(group == target_group)
-
-  if (nrow(rules) == 0L) {
-    return(df)
-  }
-
-  stopifnot(all(rules$indicator %in% names(df)))
-
-  out <- df
-  for (i in seq_len(nrow(rules))) {
-    rule <- rules[i, , drop = FALSE]
-    matched <- out[[iso_col]] == rule$iso &
-      !is.na(out[[date_col]]) &
-      out[[date_col]] == rule$date
-
-    stopifnot(sum(matched, na.rm = TRUE) == 1L)
-
-    if (!is.na(rule$match_value)) {
-      observed <- out[[rule$indicator]][matched]
-      stopifnot(
-        length(observed) == 1L,
-        !is.na(observed),
-        # Confirm the source value still matches the logged correction.
-        abs(observed - rule$match_value) < 0.5
-      )
-    }
-
-    out[[rule$indicator]][matched] <- NA_real_
-  }
-
-  out
-}
-
-
-# HCW - monthly count -----------------------------------------------------
-
-# Filter for healthcare workers & legal status.
-target_hcw <- select_target_reporting_row(base_target, "HW") %>%
-  mutate(hw_cps_repstat = if_else(
-           is.na(N_VACC_LAST_DOSE) == FALSE & N_VACC_LAST_DOSE != 0,
-           "reporting", NA_character_),
-         hw_boost_repstat = if_else(
-           is.na(N_VACC_BOOSTER_DOSE) == FALSE & N_VACC_BOOSTER_DOSE != 0,
-           "reporting", NA_character_))
-
-# Filter for cps reporting countries.
-target_hcw_cps <- target_hcw %>%
-  filter(hw_cps_repstat == "reporting")
-
-## Summarize by month.
-count_time_hcw_cps <- target_hcw_cps %>%
-  group_by(DATE) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Complete primary series") %>%
-  ungroup()
-
-## Summarize by country.
-count_country_hcw_cps <- target_hcw_cps %>%
-  group_by(ISO_3_CODE) %>%
-  summarise(count = n()) %>%
-  mutate(type = "Complete primary series") %>%
-  rename(code = ISO_3_CODE) %>%
-  ungroup()
-
-# Filter for booster reporting countries.
-target_hcw_boost <- target_hcw %>%
-  filter(hw_boost_repstat == "reporting")
-
-## Summarize by month.
-count_time_hcw_boost <- target_hcw_boost %>%
-  group_by(DATE) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Booster") %>%
-  ungroup()
-
-## Summarize by country.
-count_country_hcw_boost <- target_hcw_boost %>%
-  group_by(ISO_3_CODE) %>%
-  summarise(count = n()) %>%
-  mutate(type = "Booster") %>%
-  rename(code = ISO_3_CODE) %>%
-  ungroup()
-
-# Merge month count tables.
-count_time_hcw_month <- rbind(count_time_hcw_cps, count_time_hcw_boost) %>%
-  spread(type, count) %>%
-  rename(cps = `Complete primary series`) %>%
-  mutate(`Complete primary series` = cps - `Booster`) %>%
-  gather(key = "type", value = "count", -DATE) %>%
-  rename(count_month = count)
-
-
-# HCW - cumulative count --------------------------------------------------
-
-# Create a full country-month scaffold for cumulative reporting status.
-base_names <- raw_entity_details %>%
-  select(CODE) %>%
-  rename(iso = CODE)
-
-base_dates <- data.frame(seq(from = ymd("2021-01-01"), 
-                             to = ymd("2023-12-31"), 
-                             by = "month"))
-colnames(base_dates) <- "date"
-
-base_blank <- merge(base_names, base_dates, all = TRUE)
-
-# Fill reports forward to count countries that have ever reported by each month.
-mod_target_hcw <- target_hcw %>%
-  select(ISO_3_CODE,
-         DATE,
-         WHO_LEGAL_STATUS_TITLE,
-         WHO_REGION,
-         WBINCOME_LONG_STATUS,
-         N_VACC_LAST_DOSE,
-         N_VACC_BOOSTER_DOSE) %>%
-  mutate(DATE = as.Date(DATE)) %>%
-  filter(is.na(N_VACC_LAST_DOSE) == FALSE | is.na(N_VACC_BOOSTER_DOSE) == FALSE) %>%
-  group_by(ISO_3_CODE, DATE) %>%
-  slice(1) %>%
-  ungroup() %>%
-  right_join(base_blank, by = c("DATE" = "date",  "ISO_3_CODE" = "iso")) %>%
-  arrange(ISO_3_CODE, DATE) %>%
-  group_by(ISO_3_CODE) %>%
-  fill(N_VACC_LAST_DOSE,
-       N_VACC_BOOSTER_DOSE,
-       WHO_LEGAL_STATUS_TITLE,
-       WHO_REGION,
-       WBINCOME_LONG_STATUS) %>%
-  # Treat zero as non-reporting for cumulative reporting-completeness counts.
-  mutate(N_VACC_LAST_DOSE = ifelse(N_VACC_LAST_DOSE == 0, NA, N_VACC_LAST_DOSE),
-         N_VACC_BOOSTER_DOSE = ifelse(N_VACC_BOOSTER_DOSE == 0, NA, N_VACC_BOOSTER_DOSE)) %>%
-  filter(WHO_LEGAL_STATUS_TITLE == "Member State")
-
-# Filter for complete primary reports.
-sum_target_hcw_cps <- mod_target_hcw %>%
-  filter(is.na(N_VACC_LAST_DOSE) == FALSE) %>%
-  group_by(DATE) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Complete primary series")
-
-# Filter and summarize for booster reports.
-sum_target_hcw_boost <- mod_target_hcw %>%
-  filter(is.na(N_VACC_BOOSTER_DOSE) == FALSE) %>%
-  group_by(DATE) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Booster")
-
-# Combine count tables.
-count_time_hcw_cumul <- rbind(sum_target_hcw_cps, 
-                              sum_target_hcw_boost) %>%
-  rename(date = DATE,
-         count_cumul = count)
-
-
-# HCW - combine monthly and cumulative ------------------------------------
-
-# Isolate monthly cps count.
-count_time_hcw <- count_time_hcw_month %>%
-  filter(type !=  "cps")%>%
-  mutate(DATE = as.Date(DATE)) %>%
-  left_join(., count_time_hcw_cumul, by = c("DATE" = "date", 
-                                            "type" = "type")) %>%
-  mutate(group = "hcw")
-
-
-# HCW - cumulative, disaggregated -----------------------------------------
-
-# Filter for complete primary reports.
-sum_target_hcw_cps_inc <- mod_target_hcw %>%
-  filter(is.na(N_VACC_LAST_DOSE) == FALSE,
-         WBINCOME_LONG_STATUS != "NA",
-         is.na(WBINCOME_LONG_STATUS) == FALSE) %>%
-  group_by(DATE, WBINCOME_LONG_STATUS) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Complete primary series",
-         count_total = case_when(
-           WBINCOME_LONG_STATUS == "High income" ~ count_hic,
-           WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
-           WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
-           WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           TRUE ~ NA_real_
-         ),
-         count_per = count / count_total) %>%
-  ungroup()
-
-# Filter and summarize for booster reports.
-sum_target_hcw_boost_inc <- mod_target_hcw %>%
-  filter(is.na(N_VACC_BOOSTER_DOSE) == FALSE,
-         WBINCOME_LONG_STATUS != "NA",
-         is.na(WBINCOME_LONG_STATUS) == FALSE) %>%
-  group_by(DATE, WBINCOME_LONG_STATUS) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Booster",
-         count_total = case_when(
-           WBINCOME_LONG_STATUS == "High income" ~ count_hic,
-           WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
-           WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
-           WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           TRUE ~ NA_real_
-         ),
-         count_per = count / count_total) %>%
-  ungroup()
-
-# Combine count tables.
-count_time_hcw_inc_cumul <- rbind(sum_target_hcw_cps_inc, 
-                                  sum_target_hcw_boost_inc) %>%
-  mutate(population = "Health and care workers")
-
-
-# HCW - country thoroughness ----------------------------------------------
-
-cons_hcw_cps <- target_hcw %>%
-  filter(hw_cps_repstat == "reporting",
-         YEAR >= 2021,
-         YEAR <= 2023) %>%
-  group_by(ISO_3_CODE) %>%
-  summarise(count = n(),
-            income_group = first(WBINCOME_LONG_STATUS),
-            region_who = first(WHO_REGION)) %>%
-  ungroup() %>%
-  mutate(count_total = 34,
-         per = count / count_total)
-
-
-# Older adults - monthly count -------------------------------------------
-
-# Filter target for older adults & legal status.
-target_old <- select_target_reporting_row(base_target, "OLDER_60") %>%
-  mutate(old_cps_repstat = if_else(
-           is.na(N_VACC_LAST_DOSE) == FALSE & N_VACC_LAST_DOSE != 0,
-           "reporting", NA_character_),
-         old_boost_repstat = if_else(
-           is.na(N_VACC_BOOSTER_DOSE) == FALSE & N_VACC_BOOSTER_DOSE != 0,
-           "reporting", NA_character_))
-
-# Filter for cps reporting countries.
-target_old_cps <- target_old %>%
-  filter(old_cps_repstat == "reporting")
-
-## Summarize by month.
-count_time_old_cps <- target_old_cps %>%
-  group_by(DATE) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Complete primary series") %>%
-  ungroup()
-
-## Summarize by country.
-count_country_old_cps <- target_old_cps %>%
-  group_by(ISO_3_CODE) %>%
-  summarise(count = n()) %>%
-  mutate(type = "Complete primary series") %>%
-  rename(code = ISO_3_CODE) %>%
-  ungroup()
-
-# Filter for booster reporting countries.
-target_old_boost <- target_old %>%
-  filter(old_boost_repstat == "reporting")
-
-## Summarize by month.
-count_time_old_boost <- target_old_boost %>%
-  group_by(DATE) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Booster") %>%
-  ungroup()
-
-## Summarize by country.
-count_country_old_boost <- target_old_boost %>%
-  group_by(ISO_3_CODE) %>%
-  summarise(count = n()) %>%
-  mutate(type = "Booster") %>%
-  rename(code = ISO_3_CODE) %>%
-  ungroup()
-
-# Merge month count tables.
-count_time_old_month <- rbind(count_time_old_cps, count_time_old_boost) %>%
-  spread(type, count) %>%
-  rename(cps = `Complete primary series`) %>%
-  mutate(`Complete primary series` = cps - `Booster`) %>%
-  gather(key = "type", value = "count", -DATE) %>%
-  rename(count_month = count)
-
-
-# Older adults - cumulative count -----------------------------------------
-
-# Fill reports forward to count countries that have ever reported by each month.
-mod_target_old <- target_old %>%
-  select(ISO_3_CODE,
-         DATE,
-         WHO_LEGAL_STATUS_TITLE,
-         WHO_REGION,
-         WBINCOME_LONG_STATUS,
-         N_VACC_LAST_DOSE,
-         N_VACC_BOOSTER_DOSE) %>%
-  mutate(DATE = as.Date(DATE)) %>%
-  filter(is.na(N_VACC_LAST_DOSE) == FALSE | is.na(N_VACC_BOOSTER_DOSE) == FALSE)%>%
-  group_by(ISO_3_CODE, DATE) %>%
-  slice(1) %>%
-  ungroup() %>%
-  right_join(base_blank, by = c("DATE" = "date",  "ISO_3_CODE" = "iso")) %>%
-  apply_reporting_set_missing(
-    target_group = "older",
-    iso_col = "ISO_3_CODE",
-    date_col = "DATE"
-  ) %>%
-  
-  arrange(ISO_3_CODE, DATE) %>%
-  group_by(ISO_3_CODE) %>%
-  fill(N_VACC_LAST_DOSE,
-       N_VACC_BOOSTER_DOSE,
-       WHO_LEGAL_STATUS_TITLE,
-       WHO_REGION,
-       WBINCOME_LONG_STATUS) %>%
-  arrange(ISO_3_CODE, DATE) %>%
-  group_by(ISO_3_CODE) %>%
-  # Treat zero as non-reporting for cumulative reporting-completeness counts.
-  mutate(N_VACC_LAST_DOSE = ifelse(N_VACC_LAST_DOSE == 0, NA, N_VACC_LAST_DOSE),
-         N_VACC_BOOSTER_DOSE = ifelse(N_VACC_BOOSTER_DOSE == 0, NA, N_VACC_BOOSTER_DOSE)) %>%
-  filter(WHO_LEGAL_STATUS_TITLE == "Member State")
-
-# Filter for complete primary reports.
-sum_target_old_cps <- mod_target_old %>%
-  filter(is.na(N_VACC_LAST_DOSE) == FALSE) %>%
-  group_by(DATE) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Complete primary series")
-
-# Filter and summarize for booster reports.
-sum_target_old_boost <- mod_target_old %>%
-  filter(is.na(N_VACC_BOOSTER_DOSE) == FALSE) %>%
-  group_by(DATE) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Booster")
-
-# Combine count tables.
-count_time_old_cumul <- rbind(sum_target_old_cps, 
-                              sum_target_old_boost) %>%
-  rename(date = DATE,
-         count_cumul = count)
-
-
-# Older adults - combine monthly and cumulative ---------------------------
-
-# Isolate monthly cps count.
-count_time_old <- count_time_old_month %>%
-  filter(type !=  "cps")%>%
-  mutate(DATE = as.Date(DATE)) %>%
-  left_join(., count_time_old_cumul, by = c("DATE" = "date", "type" = "type")) %>%
-  mutate(group = "old")
-
-
-# Older adults - cumulative, disaggregated --------------------------------
-
-# Filter for complete primary reports.
-sum_target_old_cps_inc <- mod_target_old %>%
-  filter(is.na(N_VACC_LAST_DOSE) == FALSE,
-         WBINCOME_LONG_STATUS != "NA",
-         is.na(WBINCOME_LONG_STATUS) == FALSE) %>%
-  group_by(DATE, WBINCOME_LONG_STATUS) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Complete primary series",
-         count_total = case_when(
-           WBINCOME_LONG_STATUS == "High income" ~ count_hic,
-           WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
-           WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
-           WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           TRUE ~ NA_real_
-         ),
-         count_per = count / count_total) %>%
-  ungroup()
-
-# Filter and summarize for booster reports.
-sum_target_old_boost_inc <- mod_target_old %>%
-  filter(is.na(N_VACC_BOOSTER_DOSE) == FALSE,
-         WBINCOME_LONG_STATUS != "NA",
-         is.na(WBINCOME_LONG_STATUS) == FALSE) %>%
-  group_by(DATE, WBINCOME_LONG_STATUS) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Booster",
-         count_total = case_when(
-           WBINCOME_LONG_STATUS == "High income" ~ count_hic,
-           WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
-           WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
-           WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           TRUE ~ NA_real_
-         ),
-         count_per = count / count_total) %>%
-  ungroup()
-
-# Combine count tables.
-count_time_old_inc_cumul <- rbind(sum_target_old_cps_inc, 
-                                  sum_target_old_boost_inc) %>%
-  mutate(population = "Older adults")
-
-
-# Total - monthly count ----------------------------------------------------
-
-# Join total-population uptake reports to country metadata for reporting counts.
-reporting_total_weekly <- raw_entity_details %>%
-  select(CODE,
-         WHO_LEGAL_STATUS_TITLE,
-         WHOREGIONC,
-         WBINCOMESTATUS
-         ) %>%
-  right_join(., base_total, by = c("CODE" = "COUNTRY"))
-
-total <- reporting_total_weekly %>%
-  filter(WHO_LEGAL_STATUS_TITLE == "Member State") %>%
-  rename(iso = CODE) %>%
-  mutate(year = year(DATE),
-         month = month(DATE),
-         date = as.Date(paste0(year, '-', month, '-01'), 
-                        format = '%Y-%m-%d')) %>%
-  group_by(iso, date) %>%
-  top_n(1, DATE) %>%
-  ungroup()
-
-# Filter for cps reporting countries.
-total_cps <- total %>%
-  filter(is.na(PERSONS_VACCINATED_COMPLETE) == FALSE & PERSONS_VACCINATED_COMPLETE != 0)
-
-## Summarize by month.
-count_time_total_cps <- total_cps %>%
-  group_by(date) %>%
-  summarise(count = n()) %>%
-  mutate(type = "Complete primary series") %>%
-  ungroup()
-
-## Summarize by country.
-count_country_total_cps <- total_cps %>%
-  group_by(iso) %>%
-  summarise(count = n()) %>%
-  mutate(type = "Complete primary series") %>%
-  rename(code = iso) %>%
-  ungroup()
-
-# Filter for booster reporting countries.
-total_boost <- total %>%
-  filter(is.na(PERSONS_VACCINATED_BOOSTER_ADD_DOSE) == FALSE & PERSONS_VACCINATED_BOOSTER_ADD_DOSE != 0)
-
-## Summarize by week.
-count_time_total_boost <- total_boost %>%
-  group_by(date) %>%
-  summarise(count = n()) %>%
-  mutate(type = "Booster") %>%
-  ungroup()
-
-## Summarize by country.
-count_country_total_boost <- total_boost %>%
-  group_by(iso) %>%
-  summarise(count = n()) %>%
-  mutate(type = "Booster") %>%
-  rename(code = iso) %>%
-  ungroup()
-
-# Merge month count tables.
-count_time_total_month <- rbind(count_time_total_cps, count_time_total_boost) %>%
-  spread(type, count) %>%
-  rename(cps = `Complete primary series`) %>%
-  mutate(Booster = if_else(is.na(Booster), 0, Booster)) %>%
-  mutate(`Complete primary series` = cps - `Booster`) %>%
-  gather(key = "type", value = "count", -date) %>%
-  rename(count_month = count)
-
-
-# Total - cumulative count ------------------------------------------------
-
-mod_total <- total %>%
-  select(iso,
-         date,
-         WHO_LEGAL_STATUS_TITLE,
-         WHOREGIONC,
-         WBINCOMESTATUS,
-         PERSONS_VACCINATED_COMPLETE,
-         PERSONS_VACCINATED_BOOSTER_ADD_DOSE) %>%
-  mutate(WBINCOME_LONG_STATUS = if_else(WBINCOMESTATUS == "High income: nonOECD","High income",
-                                        if_else(WBINCOMESTATUS == "High income: OECD", "High income",
-                                                WBINCOMESTATUS))) %>%
-  select(-WBINCOMESTATUS) %>%
-  right_join(base_blank, by = c("date" = "date",  "iso" = "iso")) %>%
-  apply_reporting_set_missing(
-    target_group = "total",
-    iso_col = "iso",
-    date_col = "date"
-  ) %>%
-  arrange(iso, date) %>%
-  group_by(iso) %>%
-  fill(PERSONS_VACCINATED_COMPLETE,
-       PERSONS_VACCINATED_BOOSTER_ADD_DOSE,
-       WHO_LEGAL_STATUS_TITLE,
-       WHOREGIONC,
-       WBINCOME_LONG_STATUS) %>%
-  # Treat zero as non-reporting for cumulative reporting-completeness counts.
-  mutate(PERSONS_VACCINATED_COMPLETE = ifelse(PERSONS_VACCINATED_COMPLETE == 0, NA, PERSONS_VACCINATED_COMPLETE),
-         PERSONS_VACCINATED_BOOSTER_ADD_DOSE = ifelse(PERSONS_VACCINATED_BOOSTER_ADD_DOSE == 0, NA, PERSONS_VACCINATED_BOOSTER_ADD_DOSE)) %>%
-  filter(WHO_LEGAL_STATUS_TITLE == "Member State")
-
-# Filter for complete primary reports.
-sum_weekly_cps <- mod_total %>%
-  filter(is.na(PERSONS_VACCINATED_COMPLETE) == FALSE) %>%
-  group_by(date) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Complete primary series")
-
-# Filter and summarize for booster reports.
-sum_weekly_boost <- mod_total %>%
-  filter(is.na(PERSONS_VACCINATED_BOOSTER_ADD_DOSE) == FALSE) %>%
-  group_by(date) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Booster")
-
-# Combine count tables.
-count_time_total_cumul <- rbind(sum_weekly_cps, 
-                                sum_weekly_boost) %>%
-  rename(count_cumul = count)
-
-
-# Total - cumulative, disaggregated ---------------------------------------
-
-# Filter for complete primary reports.
-sum_total_cps_inc <- mod_total %>%
-  filter(is.na(PERSONS_VACCINATED_COMPLETE) == FALSE,
-         is.na(WBINCOME_LONG_STATUS) == FALSE) %>%
-  group_by(date, WBINCOME_LONG_STATUS) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Complete primary series",
-         count_total = case_when(
-           WBINCOME_LONG_STATUS == "High income" ~ count_hic,
-           WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
-           WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
-           WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           TRUE ~ NA_real_
-         ),
-         count_per = count / count_total) %>%
-  ungroup()
-
-# Filter and summarize for booster reports.
-sum_total_boost_inc <- mod_total %>%
-  filter(is.na(PERSONS_VACCINATED_BOOSTER_ADD_DOSE) == FALSE,
-         is.na(WBINCOME_LONG_STATUS) == FALSE) %>%
-  group_by(date, WBINCOME_LONG_STATUS) %>%
-  summarize(count = n()) %>%
-  mutate(type = "Booster",
-         count_total = case_when(
-           WBINCOME_LONG_STATUS == "High income" ~ count_hic,
-           WBINCOME_LONG_STATUS == "Upper middle income" ~ count_umic,
-           WBINCOME_LONG_STATUS == "Lower middle income" ~ count_lmic,
-           WBINCOME_LONG_STATUS == "Low income" ~ count_lic,
-           TRUE ~ NA_real_
-         ),
-         count_per = count / count_total) %>%
-  ungroup()
-
-# Combine count tables.
-count_time_total_inc_cumul <- rbind(sum_total_cps_inc, 
-                                    sum_total_boost_inc) %>%
-  mutate(population = "Total population") %>%
-  rename(DATE = date)
-
-
-# Total - combine monthly and cumulative ----------------------------------
-
-count_time_total <- count_time_total_month %>%
-  filter(type !=  "cps") %>%
-  left_join(., count_time_total_cumul, by = c("date" = "date", 
-                                              "type" = "type")) %>%
-  mutate(group = "total") %>%
-  rename(DATE = date)
-
-
-# Combined ----------------------------------------------------------------
-
-count_time <- rbind(count_time_hcw, count_time_old, count_time_total) %>%
-  rename(date = DATE) %>%
-  filter(date < as.Date("2024-01-01") & date > as.Date("2020-12-01")) %>%
-  mutate(group = case_when(
-    group == "total" ~ "Total population",
-    group == "old" ~ "Older adults",
-    group == "hcw" ~ "Health and care workers",
-    TRUE ~ group
-  ))
-
-count_time_inc <- rbind(count_time_hcw_inc_cumul, 
-                        count_time_old_inc_cumul,
-                        count_time_total_inc_cumul)
+# 4. Summarize monthly categories and cumulative participation ------------
+
+# Monthly categories are mutually exclusive and include booster-only reports.
+count_time_monthly_categories <- reporting_country_month %>%
+  group_by(date, group) %>%
+  summarise(`CPS only` = sum(cps_reported & !booster_reported),
+            `CPS and booster` = sum(cps_reported & booster_reported),
+            `Booster only` = sum(!cps_reported & booster_reported), .groups = "drop") %>%
+  pivot_longer(c(`CPS only`, `CPS and booster`, `Booster only`),
+               names_to = "category", values_to = "count_month")
+
+# Indicator totals include countries reporting both indicators.
+count_time <- reporting_country_indicator %>%
+  group_by(date, group, type) %>%
+  summarise(count_month = sum(reported), count_cumul = sum(ever_reported), .groups = "drop")
+
+# Income denominators include all Member States assigned to each income group.
+reporting_income_denominators <- population_all %>%
+  filter(type == "income") %>%
+  transmute(WBINCOME_LONG_STATUS = recode(dimension,
+              HIC = "High income", UMIC = "Upper middle income",
+              LMIC = "Lower middle income", LIC = "Low income"),
+            count_total = countries)
+
+count_time_inc <- reporting_country_indicator %>%
+  filter(!is.na(WBINCOME_LONG_STATUS)) %>%
+  group_by(DATE = date, population = group, WBINCOME_LONG_STATUS, type) %>%
+  summarise(count = sum(ever_reported), .groups = "drop") %>%
+  left_join(reporting_income_denominators, by = "WBINCOME_LONG_STATUS") %>%
+  mutate(count_per = count / count_total)
 
 
 # Check monotonicity ------------------------------------------------------
 
-# Cumulative reporting counts should be non-decreasing within each stratum.
+# Cumulative counts include all countries that have reported by that month.
 count_time_inc_verif <- count_time_inc %>%
   group_by(WBINCOME_LONG_STATUS,
-           population, 
+           population,
            type) %>%
   arrange(DATE) %>%
-  summarize(is_monotone = is_monotonic(count))
+  summarise(is_monotone = all(diff(count) >= 0), .groups = "drop")
+
+stopifnot(all(count_time_inc_verif$is_monotone))
 
 
 # End ---------------------------------------------------------------------

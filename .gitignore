@@ -13,9 +13,6 @@
 .DS_Store
 **/.DS_Store
 
-# Scratch scripts not included in the publication workflow
-to_be_cleaned/
-
 # Example code in package build process
 *-Ex.R
 
@@ -54,4 +51,6 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
-pre_submission_review.md
+
+# Regenerated calculation audits
+/output/audit/

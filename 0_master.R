@@ -1,5 +1,5 @@
 # Global COVID-19 vaccination uptake analysis
-# Maintainer: BROOKS, Donald J. 
+# Maintainer: BROOKS, Donald J.
 # See README.md for manuscript and citation details
 
 # Setup -------------------------------------------------------------------
@@ -11,20 +11,20 @@ options(scipen = 999)
 
 # Load packages
 
-lib <- c("tidyverse", "lubridate", "countrycode",
-         "data.table", "httr", "scales", "jsonlite", "ggpattern", "ggrepel", 
-         "scales", "treemap", "ggtext", "ggforce", "tibble", "kableExtra", 
-         "knitr", "ordering", "shadowtext", "forcats", "flextable", "officer", 
-         "rlang", "cowplot", "patchwork" )
+lib <- c("tidyverse", "lubridate", "httr", "jsonlite", "scales", "ggrepel",
+         "flextable", "officer", "patchwork")
 
 invisible(lapply(lib, library, character.only = TRUE))
 
 
 # Global switches ---------------------------------------------------------
 
-# TRUE: write figures, tables, and audit outputs to the output directory.
+# TRUE: write figures, tables and analytical CSVs to the output directory.
 # FALSE: run the complete analysis without overwriting exported files.
 export_outputs <- TRUE
+
+# Also write detailed calculation records to output/audit/ when exporting.
+export_audit <- FALSE
 
 # FALSE: use the committed, dated WHO API snapshots in the input directory.
 # TRUE: download fresh API data and overwrite the cached snapshots.
@@ -66,6 +66,7 @@ get_project_path <- function() {
 path_project <- get_project_path()
 path_input <- file.path(path_project, "input")
 path_save <- file.path(path_project, "output")
+path_audit <- file.path(path_save, "audit")
 
 # Central audit log for manual exclusions, replacements, and reporting-basis
 # decisions used across manuscript analyses.
@@ -85,25 +86,37 @@ if (isTRUE(export_outputs) && !dir.exists(path_save)) {
   dir.create(path_save, recursive = TRUE)
 }
 
-export_docx <- function(...) {
-  if (isTRUE(export_outputs)) {
-    return(save_as_docx(...))
-  }
+# Record calculation checks and export analytical tables ------------------
 
+retro_validation <- tibble::tibble(check = character(), passed = logical())
+retro_test <- function(check, passed) {
+  passed <- isTRUE(passed)
+  retro_validation <<- bind_rows(retro_validation,
+    tibble::tibble(check = paste0("retrospective__", check), passed = passed))
+  if (!passed) stop("Retrospective validation failed: ", check, call. = FALSE)
+}
+
+# Use the same CSV convention for manuscript data and calculation audits.
+export_cleaned_csv <- function(data, filename, directory = path_save) {
+  if (isTRUE(export_outputs)) {
+    dir.create(directory, recursive = TRUE, showWarnings = FALSE)
+    write.csv(data, file.path(directory, filename), row.names = FALSE, na = "")
+  }
+}
+
+# Export Word tables formatted in 11_export_tables.R.
+export_docx <- function(...) {
+  if (isTRUE(export_outputs)) save_as_docx(...)
   invisible(NULL)
 }
 
 figure_specs <- list(
-  square = list(width = 7, height = 7),
-  wide = list(width = 10, height = 6),
   wide_tall = list(width = 10, height = 7),
   double_wide = list(width = 11, height = 7),
-  double_tall = list(width = 11, height = 8),
-  extra_wide = list(width = 13, height = 7),
-  tall = list(width = 9, height = 11)
+  extra_wide = list(width = 13, height = 7)
 )
 
-# Centralize figure export dimensions so regenerated figures use one standard.
+# Export figures using the specified dimensions.
 export_figure <- function(filename, plot, size = "wide_tall", width = NULL,
                           height = NULL, dpi = 300, path = path_save) {
   if (!isTRUE(export_outputs)) {
@@ -173,7 +186,7 @@ odata_value_as_data_frame <- function(api_json) {
   api_data
 }
 
-# Save flattened CSV mirrors for reviewer inspection; JSON remains authoritative.
+# Save CSV copies for inspection. Analyses read the JSON extracts.
 write_api_snapshot_csv <- function(api_data, cache_file) {
   csv_dir <- file.path(dirname(cache_file), "api_csv")
   csv_file <- file.path(
@@ -185,12 +198,12 @@ write_api_snapshot_csv <- function(api_data, cache_file) {
   write.csv(api_data, csv_file, row.names = FALSE, na = "")
 }
 
-# Read the WHO snapshot once and return the analysis-ready rectangular table.
+# Read the cached WHO extract and select its data table.
 read_who_api_snapshot <- function(url, cache_file) {
   api_json <- read_who_api_json(url = url, cache_file = cache_file)
   api_data <- odata_value_as_data_frame(api_json)
 
-  write_api_snapshot_csv(api_data, cache_file)
+  if (isTRUE(export_outputs)) write_api_snapshot_csv(api_data, cache_file)
 
   api_data
 }
@@ -214,7 +227,7 @@ levels_income <- c("HIC", "UMIC", "LMIC", "LIC")
 
 levels_region <- c("AFR", "AMR", "EMR", "EUR", "SEAR", "WPR")
 
-levels_groups_short <- c("Total population", "Older adults", 
+levels_groups_short <- c("Total population", "Older adults",
                          "Health and care workers")
 
 levels_indicator <- c("At least one dose", "Complete primary series",
@@ -226,19 +239,16 @@ source(file.path(path_project, "helper_design_specifications.R"))
 palette_3 <- c(color_who_cat_base_1, color_who_cat_base_2,
                    color_who_cat_base_3)
 
-palette_4 <- c(color_who_cat_base_1, color_who_cat_base_2, 
+palette_4 <- c(color_who_cat_base_1, color_who_cat_base_2,
                     color_who_cat_base_3, color_who_cat_base_4)
 
-palette_5 <- c(color_who_cat_base_1, color_who_cat_base_2,
-               color_who_cat_base_3, color_who_cat_base_4,
-               color_who_cat_base_5)
 
 palette_region <- c(color_who_afr, color_who_amr, color_who_emr, color_who_eur,
                     color_who_sear, color_who_wpr)
 
 pal_dose <- setNames(palette_3, levels_indicator)
 pal_dose_compare <- c("Complete primary series" = color_who_seq_1,
-                      "At least one booster dose" = color_who_cat_base_1)
+                      "At least one booster dose" = color_who_cat_base_2)
 pal_income <- setNames(palette_4, levels_income)
 pal_income_long <- setNames(palette_4,
                             c("High income", "Upper middle income",
@@ -251,25 +261,18 @@ pal_covax <- c("AMC" = color_who_cat_base_1,
 pal_income_world <- c(pal_income, "World" = color_who_seq_1)
 pal_region_world <- c(pal_region, "World" = color_who_seq_1)
 pal_policy <- palette_4
-pal_reporting <- c("Complete primary series" = color_who_diverg_1,
-                   "Booster" = color_who_diverg_5)
-pal_reporting_fill <- c("Complete primary series" = color_who_diverg_2,
-                        "Booster" = color_who_diverg_4)
 pal_dvr_all <- c("Global" = color_who_seq_1,
                  pal_region,
                  pal_income)
 
 label_axis_coverage <- "Vaccination coverage (% of population)"
 label_axis_admin_per100 <- "Doses administered (per 100 population)"
+label_axis_daily_rate <- "Doses administered per 100 population per day"
 label_axis_income <- "Income group"
 label_axis_date <- "Date"
 label_axis_member_states_n <- "Number of WHO Member States"
 label_axis_member_states_pct <- "Percentage of WHO Member States"
 label_legend_income <- "Income group"
-label_source_reporting <- paste(
-  "Data source: WHO-UNICEF electronic Joint Reporting Form COVID-19 module",
-  "and WHO regional reporting systems"
-)
 
 panel_tag_theme <- theme(
   plot.tag = element_text(face = "bold", size = 10, color = "black")
@@ -290,10 +293,8 @@ raw_entity_details <- read_who_api_snapshot(
   )
 )
 
-raw_adhoc <- data.frame(
-  read.csv(file.path(path_input, "base_adhoc.csv"),
-           stringsAsFactors = FALSE,
-           na.strings = c("", "NA")))
+raw_adhoc <- read.csv(file.path(path_input, "base_adhoc.csv"),
+                      stringsAsFactors = FALSE, na.strings = c("", "NA"))
 
 # Load 2021 and 2024 population data.
 raw_population <- read_who_api_snapshot(
@@ -342,7 +343,7 @@ raw_routine_uptake_annual <- read_who_api_snapshot(
   )
 )
 
-# Load quarterly 2024 routine uptake data.
+# Load 2024 quarterly reports and annual TESSY uptake values.
 raw_routine_uptake_quarterly <- read_who_api_snapshot(
   url = paste0(
     "https://xmart-api-public.who.int/WIISE/COV_UPTAKE",
@@ -376,21 +377,28 @@ base_total <- read_who_api_snapshot(
 # Load analyses -----------------------------------------------------------
 
 source(file.path(path_project, "1_entity_pop.R"))
+
+# Load treatment and interpolation functions, then prepare uptake estimates.
+source(file.path(path_project, "helper_clean_monotone.R"))
+source(file.path(path_project, "helper_clean_interpolate.R"))
 source(file.path(path_project, "2_data_cleaning.R"))
+
+# Coverage, priority group adjustments and daily rates use these estimates.
 source(file.path(path_project, "3_static_values.R"))
 source(file.path(path_project, "4_emergency_coverage_analysis.R"))
 source(file.path(path_project, "5_emergency_dvr_analysis.R"))
 source(file.path(path_project, "6_postemergency_policy_analysis.R"))
 source(file.path(path_project, "7_postemergency_uptake_analysis.R"))
 source(file.path(path_project, "8_reporting_analysis.R"))
-
+source(file.path(path_project, "9_sensitivity_analyses.R"))
+source(file.path(path_project, "9_calculation_checks.R"))
 
 
 # Create figures, tables, and cleaned CSV exports -------------------------
 
-source(file.path(path_project, "9_export_figures.R"))
-source(file.path(path_project, "10_export_tables.R"))
-source(file.path(path_project, "11_export_data.R"))
+source(file.path(path_project, "10_export_figures.R"))
+source(file.path(path_project, "11_export_tables.R"))
+source(file.path(path_project, "12_export_data.R"))
 
 
 # End ---------------------------------------------------------------------

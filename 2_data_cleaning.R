@@ -1,240 +1,91 @@
-# Staging -----------------------------------------------------------------
+# Administrative uptake preparation, treatment and reconstruction
+# Maintainer: BROOKS, Donald J.
+# Run through 0_master.R. Source reports remain separate from reconstructed estimates.
 
-# Apply logged date corrections before selecting monthly reports.
-fix_admin_weekly_dates <- function(df) {
-  out <- df %>%
-    mutate(date = as.Date(date))
+# 1. Stage submitted reports ----------------------------------------------
 
-  # Date replacement rules are kept in the central correction audit log.
-  date_corrections <- data_corrections %>%
-    filter(
-      analysis == "acute_2021_2023",
-      action == "replace_date",
-      indicator == "adm_date",
-      dataset == "admin_weekly"
-    ) %>%
-    transmute(
-      correction_id,
-      iso,
-      old_date = as.Date(period),
-      replacement_date = as.Date(replacement_value)
-    )
-
-  # Each affected country-date pair should have one unambiguous replacement.
-  stopifnot(
-    !anyDuplicated(date_corrections[c("iso", "old_date")]),
-    all(!is.na(date_corrections$replacement_date))
-  )
-
-  # Replace only the exact country-date combinations listed in the audit log.
-  for (i in seq_len(nrow(date_corrections))) {
-    rule <- date_corrections[i, , drop = FALSE]
-    matched <- out$iso == rule$iso &
-      !is.na(out$date) &
-      out$date == rule$old_date
-
-    if (any(matched, na.rm = TRUE)) {
-      out$date[matched] <- rule$replacement_date
-    }
-  }
-
-  out
+# Select reports with non-zero CPS counts. Coverage retains tied maximum
+# counts; reporting summaries select one row per country, date and group.
+select_target_report_rows <- function(data, with_ties = TRUE) {
+  data %>%
+    filter(!is.na(N_VACC_LAST_DOSE), N_VACC_LAST_DOSE != 0) %>%
+    mutate(DATE = as.Date(DATE)) %>%
+    group_by(ISO_3_CODE, DATE, TARGET_GROUP) %>%
+    slice_max(N_VACC_LAST_DOSE, n = 1, with_ties = with_ties) %>%
+    ungroup()
 }
 
-# Reduce weekly total-population reports to one month-end cumulative record.
-prepare_admin_total_monthly <- function(raw_weekly,
-                                        date_start = as.Date("2021-01-01"),
-                                        date_end = as.Date("2023-12-31")) {
-  raw_weekly %>%
-    transmute(
-      iso = COUNTRY,
-      date = as.Date(DATE),
-      adm_tot_td = as.numeric(DOSES_ADMINISTERED),
-      adm_tot_a1d = as.numeric(PERSONS_VACCINATED_ONE_PLUS_DOSE),
-      adm_tot_cps = as.numeric(PERSONS_VACCINATED_COMPLETE),
-      adm_tot_boost = as.numeric(PERSONS_VACCINATED_BOOSTER_ADD_DOSE)
-    ) %>%
-    filter(iso != "None") %>%
-    distinct() %>%
-    fix_admin_weekly_dates() %>%
-    filter(date >= date_start, date <= date_end) %>%
-    mutate(month_name = floor_date(date, unit = "month")) %>%
-    arrange(iso, month_name, date) %>%
-    group_by(iso, month_name) %>%
+# Restrict the coverage inputs to the study period before selecting reports.
+target_reports_monthly <- base_target %>%
+  filter(TARGET_GROUP %in% c("HW", "OLDER_60"),
+         as.Date(DATE) >= as.Date("2021-01-01"),
+         as.Date(DATE) <= as.Date("2023-12-31")) %>%
+  select_target_report_rows()
 
-    # Use the latest available weekly report within each country-month.
-    slice_tail(n = 1) %>%
-    ungroup() %>%
-    select(
-      iso,
-      month_name,
-      adm_tot_td,
-      adm_tot_a1d,
-      adm_tot_cps,
-      adm_tot_boost
-    )
-}
+# Collapse equal dated indicator values after whole-report selection.
+target_report_values <- target_reports_monthly %>%
+  transmute(iso = ISO_3_CODE, month_name = DATE, target_group = TARGET_GROUP,
+    source_id = Sys_ID, a1d = as.numeric(N_VACC_DOSE1),
+    cps = as.numeric(N_VACC_LAST_DOSE), boost = as.numeric(N_VACC_BOOSTER_DOSE)) %>%
+  pivot_longer(c(a1d, cps, boost), names_to = "indicator", values_to = "reported") %>%
+  group_by(iso, month_name, target_group, indicator) %>%
+  mutate(preparation_action = case_when(
+    is.na(reported) ~ "Originally missing",
+    duplicated(reported) ~ "Identical value collapsed",
+    TRUE ~ "Canonical observation")) %>%
+  ungroup()
 
-# Prepare older adult and HCW monthly reports from target-group submissions.
-prepare_admin_target_monthly <- function(raw_target,
-                                         date_start = as.Date("2021-01-01"),
-                                         date_end = as.Date("2023-12-31")) {
+target_counts_monthly <- target_report_values %>%
+  semi_join(entity_pop %>%
+    filter(status_who == "Member State" | iso %in% c("PSE", "XKX")), by = "iso") %>%
+  distinct(iso, month_name, target_group, indicator, reported) %>%
+  pivot_wider(names_from = indicator, values_from = reported, values_fn = unique)
 
-  # HCW rows are considered valid when CPS is non-missing and non-zero.
-  target_hcw <- raw_target %>%
-    filter(TARGET_GROUP == "HW") %>%
-    mutate(
-      hcw_repstat = if_else(
-        is.na(N_VACC_LAST_DOSE) == FALSE & N_VACC_LAST_DOSE != 0,
-        "Reporting",
-        NA_character_
-      ),
-      DATE = as.Date(DATE)
-    ) %>%
-    filter(
-      hcw_repstat == "Reporting",
-      DATE >= date_start,
-      DATE <= date_end
-    ) %>%
-    group_by(ISO_3_CODE, DATE) %>%
+# Select uptake fields for HCWs and older adults.
+admin_hcw_monthly <- target_counts_monthly %>%
+  filter(target_group == "HW") %>%
+  transmute(iso, month_name, adm_hcw_a1d_raw = a1d,
+            adm_hcw_cps_raw = cps, adm_hcw_boost_raw = boost)
 
-    # If duplicate HCW rows exist, retain the row with the largest CPS count.
-    top_n(1, N_VACC_LAST_DOSE) %>%
-    ungroup() %>%
-    select(
-      ISO_3_CODE,
-      DATE,
-      N_VACC_DOSE1,
-      N_VACC_LAST_DOSE,
-      N_VACC_BOOSTER_DOSE
-    ) %>%
-    rename(
-      adm_hcw_a1d_raw = N_VACC_DOSE1,
-      adm_hcw_cps_raw = N_VACC_LAST_DOSE,
-      adm_hcw_boost_raw = N_VACC_BOOSTER_DOSE
-    )
+admin_old_monthly <- target_counts_monthly %>%
+  filter(target_group == "OLDER_60") %>%
+  transmute(iso, month_name, adm_old_a1d_raw = a1d,
+            adm_old_cps_raw = cps, adm_old_boost_raw = boost)
 
-  # Older adult rows use the same CPS-based validity and duplicate rule.
-  target_old <- raw_target %>%
-    filter(TARGET_GROUP == "OLDER_60") %>%
-    mutate(
-      old_repstat = if_else(
-        is.na(N_VACC_LAST_DOSE) == FALSE & N_VACC_LAST_DOSE != 0,
-        "Reporting",
-        NA_character_
-      ),
-      DATE = as.Date(DATE)
-    ) %>%
-    filter(
-      old_repstat == "Reporting",
-      DATE >= date_start,
-      DATE <= date_end
-    ) %>%
-    group_by(ISO_3_CODE, DATE) %>%
+data_admin_target_monthly <- full_join(
+  admin_hcw_monthly, admin_old_monthly, by = c("iso", "month_name"))
 
-    # If duplicate older adult rows exist, retain the largest CPS count.
-    top_n(1, N_VACC_LAST_DOSE) %>%
-    ungroup() %>%
-    select(
-      ISO_3_CODE,
-      DATE,
-      N_VACC_DOSE1,
-      N_VACC_LAST_DOSE,
-      N_VACC_BOOSTER_DOSE
-    ) %>%
-    rename(
-      adm_old_a1d_raw = N_VACC_DOSE1,
-      adm_old_cps_raw = N_VACC_LAST_DOSE,
-      adm_old_boost_raw = N_VACC_BOOSTER_DOSE
-    )
-
-  full_join(
-    target_hcw,
-    target_old,
-    by = c("ISO_3_CODE" = "ISO_3_CODE", "DATE" = "DATE")
-  ) %>%
-    mutate(across(-c("ISO_3_CODE", "DATE"), as.numeric)) %>%
-    transmute(
-      iso = ISO_3_CODE,
-      month_name = DATE,
-      adm_hcw_a1d_raw,
-      adm_hcw_cps_raw,
-      adm_hcw_boost_raw,
-      adm_old_a1d_raw,
-      adm_old_cps_raw,
-      adm_old_boost_raw
-    )
-}
-
-# Create a complete country-month scaffold so non-reporting months are explicit.
+# Create one row per country and month, including months without reports.
 data_admin_time_scaffold <- entity_pop %>%
   select(a_iso = iso) %>%
   crossing(month_name = seq(as.Date("2021-01-01"),
                             as.Date("2023-12-01"),
                             by = "1 month"))
 
-# Stage total population and target group reports before denominator joins.
-data_admin_total_monthly <- prepare_admin_total_monthly(base_total)
-data_admin_target_monthly <- prepare_admin_target_monthly(base_target)
-
-# Merge monthly total population and target group records onto the scaffold.
+# Join submitted priority group values to the complete monthly calendar.
+# Total population estimates are reconstructed from dated reports below.
 data_admin_time_staged <- data_admin_time_scaffold %>%
-  left_join(
-    data_admin_total_monthly,
-    by = c("a_iso" = "iso", "month_name" = "month_name")
-  ) %>%
-  left_join(
-    data_admin_target_monthly,
-    by = c("a_iso" = "iso", "month_name" = "month_name")
-  ) %>%
-  select(
-    a_iso,
-    month_name,
-    adm_tot_td,
-    adm_tot_a1d,
-    adm_tot_cps,
-    adm_tot_boost,
-    adm_old_a1d_raw,
-    adm_old_cps_raw,
-    adm_old_boost_raw,
-    adm_hcw_a1d_raw,
-    adm_hcw_cps_raw,
-    adm_hcw_boost_raw
-  )
+  left_join(data_admin_target_monthly,
+            by = c("a_iso" = "iso", "month_name" = "month_name"))
 
 # Join staged uptake data with entity details and analysis denominators.
 data_admin_time <- data_admin_time_staged %>%
-  left_join(., entity_pop %>% select(-pop_2024, 
-                                     -pop_2024_old, 
-                                     -pol_old, 
-                                     -pol_old_source), 
+  left_join(., entity_pop %>% select(-pop_2024,
+                                     -pop_2024_old,
+                                     -pol_old,
+                                     -pol_old_source),
             by = c("a_iso" = "iso")) %>%
   rename(iso = a_iso) %>%
   filter(status_who == "Member State" | iso == "PSE" | iso == "XKX",
          is.na(month_name) == FALSE) %>%
   mutate(
-    # Calculate uncapped total population coverage for HCW adjustment.
-    cov_tot_a1d = adm_tot_a1d / pop_2021,
-    cov_tot_cps = adm_tot_cps / pop_2021,
-    cov_tot_boost = adm_tot_boost / pop_2021,
-
-    # Adjust HCW numerators when denominator sources exceed reported targets.
-    hcw_flag = if_else(pop_hcw > adm_target_hcw, "Yes", NA_character_),
-    hcw_diff = pmax(pop_hcw - adm_target_hcw, 0, na.rm = TRUE),
-
-    # Cap target group counts before calculating target group coverage.
-    adm_hcw_a1d_cap = pmin(adm_hcw_a1d_raw, pop_hcw),
-    adm_hcw_cps_cap = pmin(adm_hcw_cps_raw, pop_hcw),
-    adm_hcw_boost_cap = pmin(adm_hcw_boost_raw, pop_hcw),
-    cov_hcw_a1d_cap = pmin(adm_hcw_a1d_cap / pop_hcw, 1),
-    cov_hcw_cps_cap = pmin(adm_hcw_cps_cap / pop_hcw, 1),
-    cov_hcw_boost_cap = pmin(adm_hcw_boost_cap / pop_hcw, 1),
-    adm_hcw_a1d = adm_hcw_a1d_cap,
-    adm_hcw_cps = adm_hcw_cps_cap,
-    adm_hcw_boost = adm_hcw_boost_cap,
-    adm_old_a1d = pmin(adm_old_a1d_raw, pop_2021_old),
-    adm_old_cps = pmin(adm_old_cps_raw, pop_2021_old),
-    adm_old_boost = pmin(adm_old_boost_raw, pop_2021_old)
+    # Retain priority group counts for cleaning and reconstruction before capping.
+    adm_hcw_a1d = adm_hcw_a1d_raw,
+    adm_hcw_cps = adm_hcw_cps_raw,
+    adm_hcw_boost = adm_hcw_boost_raw,
+    adm_old_a1d = adm_old_a1d_raw,
+    adm_old_cps = adm_old_cps_raw,
+    adm_old_boost = adm_old_boost_raw
   )
 
 # Apply documented manual time-series corrections before monotonicity cleaning.
@@ -251,7 +102,7 @@ time_series_corrections <- data_corrections %>%
     match_value = as.numeric(match_value)
   )
 
-# Correction rules should target existing variables and unique country-months.
+# Check correction variables and unique country-month-indicator combinations.
 stopifnot(
   all(time_series_corrections$indicator %in% names(data_admin_time)),
   !anyDuplicated(
@@ -271,101 +122,172 @@ for (i in seq_len(nrow(time_series_corrections))) {
     length(observed) == 1L,
     !is.na(observed),
 
-    # Confirm the observed value still matches the documented correction.
+    # Confirm the observed value matches the documented correction.
     abs(observed - rule$match_value) < 0.5
   )
 
   data_admin_time[[rule$indicator]][matched] <- NA_real_
 }
-  
 
-# Clean timeseries data ---------------------------------------------------
 
-# Identify downward breaks in cumulative time series and interpolate gaps.
-source(file.path(path_project, "helper_clean_monotone.R"))
+# 2. Treat priority group counts at the end of each reporting month --------
 
-data_admin_time_mt <- clean_coverage_monotone_df(
-  data_admin_time,
-  id_iso = "iso",
-  id_time = "month_name",
-  vars_to_clean = c("adm_tot_td",
-                    "adm_tot_a1d",
-                    "adm_tot_cps",
-                    "adm_tot_boost",
-                    "adm_old_a1d",
-                    "adm_old_cps",
-                    "adm_old_boost",
-                    "adm_hcw_a1d",
-                    "adm_hcw_cps",
-                    "adm_hcw_boost"),
-  depth = 36,               # full monthly analysis window, 2021-2023
-  method = "interpolate",   # "set_na" | "carry_forward" | "interpolate"
-  round_int = TRUE
-  )
+vars_priority <- c("adm_old_a1d", "adm_old_cps", "adm_old_boost",
+                   "adm_hcw_a1d", "adm_hcw_cps", "adm_hcw_boost")
+priority_sources <- data_admin_time %>%
+  select(iso, month_name, date_intro, pop_2021_old, pop_hcw, all_of(vars_priority)) %>%
+  pivot_longer(all_of(vars_priority), names_to = "indicator", values_to = "reported") %>%
+  mutate(date = ceiling_date(month_name, "month") - days(1),
+         population = if_else(str_detect(indicator, "^adm_old_"), pop_2021_old, pop_hcw),
+         source_id = paste(iso, indicator, month_name, sep = ":")) %>%
+  arrange(iso, indicator, date)
 
-# Interpolate uptake between introduction date and first report. For
-# risk group booster series, use the country's first submitted
-# total population booster report as the interpolation start proxy.
-source(file.path(path_project, "helper_clean_interpolate.R"))
+priority_processed <- lapply(split(priority_sources,
+                                   paste(priority_sources$iso, priority_sources$indicator)),
+  function(source) {
+    treated <- treat_count_series(source$reported, source$date)
+    audit <- bind_cols(source,
+      as_tibble(treated[c("after_negative", "after_zero", "after_downward")]),
+      treated$flags)
+    decisions <- treated$decisions
+    if (nrow(decisions)) decisions <- decisions %>%
+      mutate(iso = source$iso[1], indicator = source$indicator[1])
+    list(audit = audit, decisions = decisions)
+  })
+priority_audit <- bind_rows(lapply(priority_processed, `[[`, "audit"))
+priority_decisions <- bind_rows(lapply(priority_processed, `[[`, "decisions"))
 
-data_admin_time_interp <- interpolate_from_intro_wide_many(
-  df = data_admin_time_mt,
-  vars = c("adm_tot_td_monotone",
-           "adm_tot_a1d_monotone",
-           "adm_tot_cps_monotone",
-           "adm_tot_boost_monotone",
-           "adm_old_a1d_monotone",
-           "adm_old_cps_monotone",
-           "adm_old_boost_monotone",
-           "adm_hcw_a1d_monotone",
-           "adm_hcw_cps_monotone",
-           "adm_hcw_boost_monotone"),
-  iso_col = "iso",
-  date_col = "month_name",
-  intro_col = "date_intro",
-  boost_reference_var = "adm_tot_boost_monotone",
-  suffix = "_interp",
-  cps_delay_months = 2,
-  month_anchor_day = 15) %>%
+# 3. Prepare dated total population reports -------------------------------
+
+message("Reconstructing total population series from dated reports")
+vars_admin <- c("adm_tot_td", "adm_tot_a1d", "adm_tot_cps", "adm_tot_boost")
+# Record treatment and reconstruction settings.
+retro_settings <- tibble(
+  negative_treatment = "exclude", zero_treatment = "exclude_after_positive",
+  interindicator_treatment = "independent", anomaly_method = "contextual_exclusion",
+  reporting_history = "all_available", repetition_treatment = "retain",
+  rapid_treatment = "retain", population_treatment = "retain",
+  introduction_date = "documented", cps_delay_months = 2L,
+  interpolation = "linear_elapsed_days", trailing_fill = "carry_forward",
+  round_reconstructed = TRUE, final_person_cap = TRUE
+)
+
+# Include WHO Member States, Kosovo and occupied Palestinian territory.
+# Exclude Eritrea and DPR Korea, where vaccination had not been introduced.
+retro_population <- entity_pop %>%
+  filter(status_who == "Member State" | iso %in% c("PSE", "XKX")) %>%
+  filter(!iso %in% c("ERI", "PRK")) %>%
+  select(iso, region_who, income_group, pop_2021, date_intro)
+retro_test("cohort_194", nrow(retro_population) == 194L &&
+             !anyDuplicated(retro_population$iso))
+retro_test("positive_populations", all(is.finite(retro_population$pop_2021) &
+                                       retro_population$pop_2021 > 0))
+
+# Retain source identifiers, including missing reported values. Combine
+# matching duplicates and exclude conflicting values as reconstruction anchors.
+retro_raw_all <- base_total %>% transmute(
+  iso = COUNTRY, date = as.Date(DATE), source_row = row_number(),
+  source_id = as.character(Sys_ID),
+  adm_tot_td = as.numeric(DOSES_ADMINISTERED),
+  adm_tot_a1d = as.numeric(PERSONS_VACCINATED_ONE_PLUS_DOSE),
+  adm_tot_cps = as.numeric(PERSONS_VACCINATED_COMPLETE),
+  adm_tot_boost = as.numeric(PERSONS_VACCINATED_BOOSTER_ADD_DOSE)
+) %>%
+  filter(!is.na(iso), iso != "None", !is.na(date),
+         date >= as.Date("2021-01-01"), date <= as.Date("2023-12-31"))
+retro_raw <- retro_raw_all %>% filter(iso %in% retro_population$iso)
+
+# Check that no manual total population corrections are specified.
+retro_test("no_unresolved_manual_total_rules", !any(
+  data_corrections$analysis == "acute_2021_2023" &
+    data_corrections$group == "total"))
+retro_preparation <- prepare_dated_reports(retro_raw, retro_population)
+retro_reports <- retro_preparation$reports
+
+# 4. Treat total population reports ---------------------------------------
+
+retro_processed <- lapply(split(retro_reports, retro_reports$iso),
+                         treat_dated_reports)
+retro_audit <- summarize_treatment_actions(bind_rows(lapply(retro_processed, `[[`, "audit")))
+retro_events <- bind_rows(lapply(retro_processed, `[[`, "events"))
+retro_decisions <- bind_rows(lapply(names(retro_processed), function(country) {
+  decisions <- retro_processed[[country]]$downward
+  if (nrow(decisions)) decisions %>% mutate(iso = country) else decisions
+}))
+
+# 5. Reconstruct total population uptake at month end ---------------------
+
+retro_targets <- crossing(
+  iso = retro_population$iso, indicator = vars_admin,
+  month_name = seq(as.Date("2021-01-01"), as.Date("2023-12-01"), by = "month")
+) %>% left_join(retro_population, by = "iso") %>%
+  mutate(target_date = ceiling_date(month_name, "month") - days(1))
+retro_monthly <- reconstruct_monthly_totals(retro_audit, retro_targets)
+
+# Use the first day as the monthly identifier; target_date records the month end
+# estimation date.
+retro_monthly_uncapped <- retro_monthly %>%
+  select(iso, month_name, indicator, before_cap) %>%
+  pivot_wider(names_from = indicator, values_from = before_cap,
+              names_glue = "{indicator}_monotone")
+retro_monthly_final <- retro_monthly %>%
+  select(iso, month_name, indicator, estimate) %>%
+  pivot_wider(names_from = indicator, values_from = estimate,
+              names_glue = "{indicator}_monotone_interp")
+
+# 6. Reconstruct priority group counts with the common dated algorithm ----
+
+# Use the first strictly positive total population month end booster estimate
+# as the zero-date proxy for priority group booster reconstruction.
+priority_booster_start <- retro_monthly %>%
+  filter(indicator == "adm_tot_boost", !is.na(estimate), estimate > 0) %>%
   group_by(iso) %>%
-  arrange(month_name) %>%
+  summarise(booster_zero_date = min(target_date), .groups = "drop")
 
-  # Carry final cumulative values forward after each country's last report.
-  fill(
-    adm_tot_td_monotone_interp,
-    adm_tot_a1d_monotone_interp,
-    adm_tot_cps_monotone_interp,
-    adm_tot_boost_monotone_interp,
-    adm_old_a1d_monotone_interp,
-    adm_old_cps_monotone_interp,
-    adm_old_boost_monotone_interp,
-    adm_hcw_a1d_monotone_interp,
-    adm_hcw_cps_monotone_interp,
-    adm_hcw_boost_monotone_interp
-  ) %>%
-  ungroup() %>%
-  
-  # Cap cleaned figures at population max after interpolation.
+# Monthly reports represent month end observations. Retained reports take
+# precedence over the programme zero dates and booster proxy.
+priority_monthly <- bind_rows(lapply(split(priority_audit,
+  paste(priority_audit$iso, priority_audit$indicator)), function(source) {
+    source <- source %>% arrange(date)
+    booster_start <- if (endsWith(source$indicator[1], "_boost"))
+      priority_booster_start$booster_zero_date[
+        match(source$iso[1], priority_booster_start$iso)] else as.Date(NA)
+    reconstructed <- reconstruct_dated_series(source,
+      target_dates = source$date, indicator = source$indicator[1],
+      introduction_date = source$date_intro[1], population = source$population[1],
+      cap_person_counts = FALSE, booster_zero_date = booster_start)
+    bind_cols(source %>% select(iso, month_name, indicator, population, date_intro) %>%
+                mutate(booster_zero_date = booster_start),
+              reconstructed)
+  }))
+
+# 7. Assemble the monthly dataset before population caps -----------------
+
+priority_retained <- priority_audit %>%
+  select(iso, month_name, indicator, after_downward) %>%
+  pivot_wider(names_from = indicator, values_from = after_downward,
+              names_glue = "{indicator}_monotone")
+priority_reconstructed <- priority_monthly %>%
+  select(iso, month_name, indicator, before_cap) %>%
+  pivot_wider(names_from = indicator, values_from = before_cap,
+              names_glue = "{indicator}_monotone_interp")
+data_admin_time_mt <- data_admin_time %>%
+  left_join(priority_retained, by = c("iso", "month_name")) %>%
+  left_join(retro_monthly_uncapped, by = c("iso", "month_name"))
+data_admin_time_reconstructed <- data_admin_time_mt %>%
+  left_join(priority_reconstructed, by = c("iso", "month_name"))
+
+# Cap reconstructed older adult counts before coverage is calculated.
+# Retain uncapped HCW counts for adjustment and capping in 4_emergency_coverage_analysis.R.
+data_admin_time_interp <- data_admin_time_reconstructed %>%
   mutate(
-    adm_tot_a1d_monotone_interp = pmin(adm_tot_a1d_monotone_interp, pop_2021),
-    adm_tot_cps_monotone_interp = pmin(adm_tot_cps_monotone_interp, pop_2021),
-    adm_tot_boost_monotone_interp = pmin(adm_tot_boost_monotone_interp, pop_2021),
-    adm_old_a1d_monotone_interp = pmin(adm_old_a1d_monotone_interp, 
-                                           pop_2021_old),
-    adm_old_cps_monotone_interp = pmin(adm_old_cps_monotone_interp, 
-                                           pop_2021_old),
-    adm_old_boost_monotone_interp = pmin(adm_old_boost_monotone_interp, 
-                                             pop_2021_old),
-    adm_hcw_a1d_monotone_interp = pmin(adm_hcw_a1d_monotone_interp, pop_hcw),
-    adm_hcw_cps_monotone_interp = pmin(adm_hcw_cps_monotone_interp, pop_hcw),
-    adm_hcw_boost_monotone_interp = pmin(adm_hcw_boost_monotone_interp, pop_hcw)
-  )
+    across(all_of(paste0(vars_priority[1:3], "_monotone_interp")),
+           ~pmin(.x, pop_2021_old))
+  ) %>%
+  left_join(retro_monthly_final, by = c("iso", "month_name"))
 
-
-# Create end-2023 dataframe for reporting related calculations ------------
-
+# HCW counts are adjusted and capped after reconstruction, before coverage is calculated.
 data_admin_last <- data_admin_time_interp %>%
   filter(month_name == as.Date("2023-12-01"))
-
 
 # End ---------------------------------------------------------------------

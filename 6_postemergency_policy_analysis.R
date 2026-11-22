@@ -29,7 +29,7 @@ policy_indicator_names <- c(
   POLICY_VACCINATION_COM = "policy_comment"
 )
 
-# Convert source population-group codes to manuscript-facing labels.
+# Convert source population-group codes to labels used in figures and tables.
 map_policy_group <- function(group) {
   case_when(
     group == "OTHER_GROUPS" ~ "Other groups",
@@ -102,7 +102,7 @@ data_policy_2024_annual_long <- raw_policy_annual %>%
     value = trimws(as.character(VALUE)),
     source = SOURCE
   ) %>%
-  
+
   # Negative sentinel and blank values indicate non-response in the source feed.
   filter(
     YEAR == 2024,
@@ -117,13 +117,13 @@ data_policy_2024_annual_long <- raw_policy_annual %>%
     group = map_policy_group(group)
   ) %>%
   right_join(
-    # The right join keeps scaffold rows when no valid report was submitted.
+    # Retain a row for countries without a valid report.
     data_policy_2024_scaffold,
     by = c("iso", "indicator", "group", "YEAR",
            "REPORTING_PERIOD", "source")
   )
 
-# The long policy table should contain one value per country-group-indicator.
+# Each source contributes at most one value per country, group, indicator and reporting period.
 stopifnot(!anyDuplicated(
   data_policy_2024_annual_long[
     c("iso", "YEAR", "REPORTING_PERIOD", "source", "group", "indicator")
@@ -136,7 +136,7 @@ data_policy_2024_annual_wide <- data_policy_2024_annual_long %>%
   mutate(status_policy = classify_policy_status(policy_vacc, policy_revacc))
 
 
-# Make entries friendly for visualization ---------------------------------
+# Set labels and order for visualization ----------------------------------
 
 # Create entry orders.
 levels_policy_a <- c(
@@ -185,7 +185,7 @@ data_routine_policy_2024 <- data_policy_2024_annual_wide %>%
 
 # Prepare dataframes for visualization ------------------------------------
 
-# Figure 7
+# Figure 4
 wrap2 <- function(x) str_wrap(x, width = 18)  # Control policy label wrapping
 pct_label_min <- 5                            # Hide small percent labels
 
